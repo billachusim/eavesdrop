@@ -9,11 +9,15 @@ import 'package:eavesdrop/live_call_screen.dart';
 import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/models/user_model.dart';
 import 'package:eavesdrop/services/database_service.dart';
+import 'package:eavesdrop/services/ringtone_service.dart';
 import 'package:eavesdrop/widgets/call_card.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:rxdart/rxdart.dart';
+
+import 'auth/onboarding_screen.dart';
 
 class LiveHomeScreen extends StatefulWidget {
   const LiveHomeScreen({super.key});
@@ -28,10 +32,7 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
   final DatabaseService _db = DatabaseService();
   bool _isMenuOpen = false;
 
-  late StreamSubscription _liveCallsSubscription;
-  late StreamSubscription _featuredUpcomingCallsSubscription;
-  StreamSubscription? _userUpcomingCallsSubscription;
-  late StreamSubscription _featuredPastCallsSubscription;
+  StreamSubscription? _callsStreamSubscription;
   List<CallModel> _liveCalls = [];
   List<CallModel> _featuredUpcomingCalls = [];
   List<CallModel> _userUpcomingCalls = [];
@@ -49,18 +50,41 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
       upperBound: 1.2,
     )..repeat(reverse: true);
 
-    _liveCallsSubscription = _db.streamLiveCalls().listen((calls) {
-      if (mounted) setState(() => _liveCalls = calls);
-    });
-
-    _featuredUpcomingCallsSubscription = _db.streamUpcomingCalls().listen((calls) {
-      if (mounted) setState(() => _featuredUpcomingCalls = calls);
-    });
+    _setupCallsStream();
 
     _featuredPastCallsSubscription = _db.streamFeaturedPastCalls().listen((calls) {
       if (mounted) setState(() => _featuredPastCalls = calls);
     });
   }
+
+  void _setupCallsStream() {
+    final liveCallsStream = _db.streamLiveCalls();
+    final featuredUpcomingCallsStream = _db.streamUpcomingCalls();
+
+    _callsStreamSubscription = Rx.combineLatest2(
+      liveCallsStream,
+      featuredUpcomingCallsStream,
+      (List<CallModel> live, List<CallModel> upcoming) {
+        final allCalls = [...live, ...upcoming];
+        allCalls.sort((a, b) => b.startTime.compareTo(a.startTime));
+        return allCalls;
+      },
+    ).listen((calls) {
+      if (mounted) {
+        setState(() {
+          _liveCalls = calls.where((call) => call.isLive).toList();
+          _featuredUpcomingCalls = calls.where((call) => !call.isLive).toList();
+        });
+        if (_liveCalls.isNotEmpty) {
+          RingtoneService.playRingtone();
+        } else {
+          RingtoneService.stopRingtone();
+        }
+      }
+    });
+  }
+
+  late StreamSubscription _featuredPastCallsSubscription;
 
   @override
   void didChangeDependencies() {
@@ -79,11 +103,12 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
     }
   }
 
+  StreamSubscription? _userUpcomingCallsSubscription;
+
   @override
   void dispose() {
     _pulseController.dispose();
-    _liveCallsSubscription.cancel();
-    _featuredUpcomingCallsSubscription.cancel();
+    _callsStreamSubscription?.cancel();
     _userUpcomingCallsSubscription?.cancel();
     _featuredPastCallsSubscription.cancel();
     super.dispose();
@@ -115,12 +140,12 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
                 title: _isMenuOpen
                     ? null
                     : Text(
-                  "Eavesdrop",
-                  style: textTheme.headlineMedium!.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+                        "Eavesdrop",
+                        style: textTheme.headlineMedium!.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
                 actions: [
                   IconButton(
                     icon: Icon(_isMenuOpen ? Icons.close : Icons.settings),
@@ -133,23 +158,22 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
                 ],
                 bottom: _isMenuOpen
                     ? PreferredSize(
-                  // Increased height to prevent overflow if buttons wrap
-                  preferredSize: const Size.fromHeight(80.0),
-                  child: Center(
-                    child: Container(
-                      height: 80.0,
-                      alignment: Alignment.center,
-                      child: _buildMenuButtons(_user),
-                    ),
-                  ),
-                )
+                        // Increased height to prevent overflow if buttons wrap
+                        preferredSize: const Size.fromHeight(80.0),
+                        child: Center(
+                          child: Container(
+                            height: 80.0,
+                            alignment: Alignment.center,
+                            child: _buildMenuButtons(_user),
+                          ),
+                        ),
+                      )
                     : null,
                 backgroundColor: const Color(0xFF0D0D0D),
                 pinned: true,
                 floating: true,
                 snap: true,
               ),
-
             ];
           },
           body: CustomScrollView(
@@ -177,24 +201,24 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
               ),
               _liveCalls.isEmpty
                   ? const SliverToBoxAdapter(
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Text("No live calls right now."),
-                  ),
-                ),
-              )
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Text("No live calls right now."),
+                        ),
+                      ),
+                    )
                   : SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                        (BuildContext context, int index) {
-                      return _buildLiveCard(context, _liveCalls[index]);
-                    },
-                    childCount: _liveCalls.length,
-                  ),
-                ),
-              ),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (BuildContext context, int index) {
+                            return _buildLiveCard(context, _liveCalls[index]);
+                          },
+                          childCount: _liveCalls.length,
+                        ),
+                      ),
+                    ),
               const SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(20, 40, 20, 20),
@@ -205,25 +229,25 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
               ),
               _upcomingCalls.isEmpty
                   ? const SliverToBoxAdapter(
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Text("No upcoming calls scheduled."),
-                  ),
-                ),
-              )
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Text("No upcoming calls scheduled."),
+                        ),
+                      ),
+                    )
                   : SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                        (BuildContext context, int index) {
-                      return _buildUpcomingCallCard(
-                          context, _upcomingCalls[index]);
-                    },
-                    childCount: _upcomingCalls.length,
-                  ),
-                ),
-              ),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (BuildContext context, int index) {
+                            return _buildUpcomingCallCard(
+                                context, _upcomingCalls[index]);
+                          },
+                          childCount: _upcomingCalls.length,
+                        ),
+                      ),
+                    ),
               const SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(20, 40, 20, 20),
@@ -234,25 +258,25 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
               ),
               _featuredPastCalls.isEmpty
                   ? const SliverToBoxAdapter(
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(20),
-                    child: Text("No featured past calls available."),
-                  ),
-                ),
-              )
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Text("No featured past calls available."),
+                        ),
+                      ),
+                    )
                   : SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                        (BuildContext context, int index) {
-                      return _buildPastCallCard(
-                          context, _featuredPastCalls[index]);
-                    },
-                    childCount: _featuredPastCalls.length,
-                  ),
-                ),
-              ),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (BuildContext context, int index) {
+                            return _buildPastCallCard(
+                                context, _featuredPastCalls[index]);
+                          },
+                          childCount: _featuredPastCalls.length,
+                        ),
+                      ),
+                    ),
             ],
           ),
         ),
@@ -276,6 +300,14 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
   }
 
   Widget _buildMenuButtons(User? user) {
+    // Helper method to navigate to OnboardingScreen
+    void navigateToOnboarding() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+      );
+    }
+
     return Wrap(
       alignment: WrapAlignment.spaceEvenly,
       crossAxisAlignment: WrapCrossAlignment.center,
@@ -331,21 +363,31 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
             );
           },
         ),
-        TextButton.icon(
-          icon: const Icon(Icons.logout, color: Colors.white),
-          label: const Text('Logout', style: TextStyle(color: Colors.white)),
-          onPressed: () async {
-            await AuthService().signOut();
-            if (mounted) {
-              setState(() {
-                _isMenuOpen = false;
-              });
-            }
-          },
-        ),
+
+        // This is the updated section
+        if (user == null)
+          TextButton.icon(
+            icon: const Icon(Icons.login, color: Colors.white),
+            label: const Text('Login', style: TextStyle(color: Colors.white)),
+            onPressed: navigateToOnboarding,
+          )
+        else
+          TextButton.icon(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            label: const Text('Logout', style: TextStyle(color: Colors.white)),
+            onPressed: () async {
+              await AuthService().signOut();
+              if (mounted) {
+                setState(() {
+                  _isMenuOpen = false;
+                });
+              }
+            },
+          ),
       ],
     );
   }
+
 
   Widget _buildPastCallCard(BuildContext context, CallModel call) {
     return Container(
@@ -400,6 +442,7 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
       margin: const EdgeInsets.only(bottom: 20),
       child: GestureDetector(
         onTap: () {
+          RingtoneService.stopRingtone();
           if (_user == null) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(

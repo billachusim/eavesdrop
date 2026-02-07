@@ -1,8 +1,7 @@
 import 'package:eavesdrop/live_call_screen.dart';
 import 'package:eavesdrop/models/call_model.dart';
-import 'package:eavesdrop/services/notification_service.dart';
+import 'package:eavesdrop/services/ringtone_service.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 class IncomingCallScreen extends StatelessWidget {
   final CallModel call;
@@ -11,8 +10,6 @@ class IncomingCallScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final notificationService = Provider.of<NotificationService>(context, listen: false);
-
     return Scaffold(
       backgroundColor: const Color(0xFF0B0B0B),
       body: Center(
@@ -39,7 +36,7 @@ class IncomingCallScreen extends StatelessWidget {
               children: [
                 ElevatedButton(
                   onPressed: () {
-                    notificationService.stopRingingSound();
+                    RingtoneService.stopRingtone();
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
@@ -56,7 +53,7 @@ class IncomingCallScreen extends StatelessWidget {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    notificationService.stopRingingSound();
+                    RingtoneService.stopRingtone();
                     Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(

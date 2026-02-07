@@ -1,6 +1,6 @@
-import 'package:audioplayers/audioplayers.dart';
 import 'package:eavesdrop/incoming_call_screen.dart';
 import 'package:eavesdrop/services/database_service.dart';
+import 'package:eavesdrop/services/ringtone_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -9,7 +9,6 @@ class NotificationService {
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final DatabaseService _db = DatabaseService();
-  final AudioPlayer _audioPlayer = AudioPlayer();
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   Future<void> initialize() async {
@@ -75,20 +74,12 @@ class NotificationService {
   void showIncomingCall(String callId) async {
     final call = await _db.getCallById(callId);
     if (call != null) {
-      playRingingSound();
+      RingtoneService.playRingtone();
       navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => IncomingCallScreen(call: call),
         ),
       );
     }
-  }
-
-  void playRingingSound() {
-    _audioPlayer.play(AssetSource('sounds/ring.mp3'));
-  }
-
-  void stopRingingSound() {
-    _audioPlayer.stop();
   }
 }
