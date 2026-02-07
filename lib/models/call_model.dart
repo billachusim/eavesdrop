@@ -15,6 +15,7 @@ class CallModel {
   final String? userLocation;
   final String? userMood;
   final String? recordingUrl;
+  final bool isFeatured;
 
   CallModel({
     required this.id,
@@ -31,6 +32,7 @@ class CallModel {
     this.userLocation,
     this.userMood,
     this.recordingUrl,
+    this.isFeatured = false,
   });
 
   factory CallModel.fromMap(Map<String, dynamic> data, String documentId) {
@@ -49,6 +51,7 @@ class CallModel {
       userLocation: data['userLocation'] as String?,
       userMood: data['userMood'] as String?,
       recordingUrl: data['recordingUrl'] as String?,
+      isFeatured: data['isFeatured'] as bool? ?? false,
     );
   }
 
@@ -67,6 +70,7 @@ class CallModel {
       'userLocation': userLocation,
       'userMood': userMood,
       'recordingUrl': recordingUrl,
+      'isFeatured': isFeatured,
     };
   }
 }

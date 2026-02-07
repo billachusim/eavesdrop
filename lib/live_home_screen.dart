@@ -27,8 +27,10 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
 
   late StreamSubscription _liveCallsSubscription;
   late StreamSubscription _upcomingCallsSubscription;
+  late StreamSubscription _featuredPastCallsSubscription;
   List<CallModel> _liveCalls = [];
   List<CallModel> _upcomingCalls = [];
+  List<CallModel> _featuredPastCalls = [];
 
   @override
   void initState() {
@@ -48,6 +50,10 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
     _upcomingCallsSubscription = _db.streamUpcomingCalls().listen((calls) {
       if (mounted) setState(() => _upcomingCalls = calls);
     });
+
+    _featuredPastCallsSubscription = _db.streamFeaturedPastCalls().listen((calls) {
+      if (mounted) setState(() => _featuredPastCalls = calls);
+    });
   }
 
   @override
@@ -55,6 +61,7 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
     _pulseController.dispose();
     _liveCallsSubscription.cancel();
     _upcomingCallsSubscription.cancel();
+    _featuredPastCallsSubscription.cancel();
     super.dispose();
   }
 
@@ -221,6 +228,35 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
                         ),
                       ),
                     ),
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(20, 40, 20, 20),
+                  child: Text("Featured Past Calls",
+                      style:
+                          TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              _featuredPastCalls.isEmpty
+                  ? const SliverToBoxAdapter(
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Text("No featured past calls available."),
+                        ),
+                      ),
+                    )
+                  : SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (BuildContext context, int index) {
+                            return _buildPastCallCard(
+                                context, _featuredPastCalls[index], user);
+                          },
+                          childCount: _featuredPastCalls.length,
+                        ),
+                      ),
+                    ),
             ],
           ),
         ),
@@ -240,6 +276,27 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
           );
         },
         child: const Icon(Icons.calendar_today),
+      ),
+    );
+  }
+
+  Widget _buildPastCallCard(
+      BuildContext context, CallModel call, User? user) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        children: [
+          CallCard(
+              call: call,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => LiveCallScreen(call: call),
+                  ),
+                );
+              }), 
+        ],
       ),
     );
   }
@@ -304,7 +361,7 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
                   foregroundColor: Colors.white,
                   backgroundColor: Colors.white.withAlpha(51),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
               ),
@@ -318,93 +375,60 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
   Widget _buildLiveCard(BuildContext context, CallModel call) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF161616),
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.red.withAlpha(38),
-            blurRadius: 25,
-            spreadRadius: 1,
-          )
-        ],
-      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          CallCard(
+            call: call,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => LiveCallScreen(call: call),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 10),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              ScaleTransition(
-                scale: _pulseController,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text(
-                    "LIVE",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
+              Row(
+                children: [
+                  ScaleTransition(
+                    scale: _pulseController,
+                    child: const Chip(
+                      backgroundColor: Colors.red,
+                      label: Text(
+                        "LIVE",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  const Icon(Icons.people_alt_outlined,
+                      size: 18, color: Colors.white70),
+                  const SizedBox(width: 4),
+                  Text("${call.listeners} listening",
+                      style: const TextStyle(color: Colors.white70)),
+                ],
               ),
-              const SizedBox(width: 12),
-              const Icon(Icons.people_alt_outlined,
-                  size: 18, color: Colors.white70),
-              const SizedBox(width: 4),
-              Text(
-                "${call.listeners} listening",
-                style: const TextStyle(color: Colors.white70),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => LiveCallScreen(call: call),
+                    ),
+                  );
+                },
+                child: const Text('Join call'),
               ),
             ],
-          ),
-          const SizedBox(height: 20),
-          Text(
-            call.title,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              height: 1.3,
-            ),
-          ),
-          const SizedBox(height: 28),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => LiveCallScreen(call: call),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: const Text(
-                "Enter Quietly",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            "This conversation is being broadcast.",
-            style: TextStyle(color: Colors.white54, fontSize: 12),
-          ),
+          )
         ],
       ),
     );

@@ -81,6 +81,7 @@ class DatabaseService {
     return _db
         .collection('calls')
         .where('isLive', isEqualTo: true)
+        .where('isFeatured', isEqualTo: true)
         .snapshots()
         .map((snap) =>
             snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
@@ -91,7 +92,20 @@ class DatabaseService {
     return _db
         .collection('calls')
         .where('isLive', isEqualTo: false)
+        .where('isFeatured', isEqualTo: true)
         .where('startTime', isGreaterThan: Timestamp.now())
+        .snapshots()
+        .map((snap) =>
+        snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
+  }
+
+  // Get all featured past calls
+  Stream<List<CallModel>> streamFeaturedPastCalls() {
+    return _db
+        .collection('calls')
+        .where('isLive', isEqualTo: false)
+        .where('isFeatured', isEqualTo: true)
+        .where('startTime', isLessThan: Timestamp.now())
         .snapshots()
         .map((snap) =>
         snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
@@ -137,6 +151,28 @@ class DatabaseService {
   Future<void> setReminder(String callId, String userId) async {
     try {
       await _db.collection('calls').doc(callId).collection('reminders').doc(userId).set({});
+    } catch (e) {
+      // print(e.toString());
+    }
+  }
+  
+  // End a call
+  Future<void> endCall(String callId) async {
+    try {
+      await _db.collection('calls').doc(callId).update({
+        'isLive': false,
+      });
+    } catch (e) {
+      // print(e.toString());
+    }
+  }
+
+  // Toggle featured status of a call
+  Future<void> toggleFeaturedCall(String callId, bool isFeatured) async {
+    try {
+      await _db.collection('calls').doc(callId).update({
+        'isFeatured': isFeatured,
+      });
     } catch (e) {
       // print(e.toString());
     }

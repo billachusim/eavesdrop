@@ -1,7 +1,11 @@
 import 'dart:ui';
 import 'package:eavesdrop/models/call_model.dart';
+import 'package:eavesdrop/models/user_model.dart';
+import 'package:eavesdrop/services/database_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class CallCard extends StatelessWidget {
   final CallModel call;
@@ -11,7 +15,10 @@ class CallCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasRecording = call.recordingUrl != null && call.recordingUrl!.isNotEmpty;
+    final bool hasRecording =
+        call.recordingUrl != null && call.recordingUrl!.isNotEmpty;
+    final user = Provider.of<User?>(context);
+    final db = DatabaseService();
 
     return GestureDetector(
       onTap: onTap,
@@ -65,6 +72,32 @@ class CallCard extends StatelessWidget {
                         ],
                       ),
                     ),
+                    if (user != null)
+                      StreamBuilder<UserModel>(
+                          stream: db.streamUser(user.uid),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData) {
+                              final userModel = snapshot.data!;
+                              if (userModel.isAdmin ||
+                                  userModel.isSuperAdmin) {
+                                return IconButton(
+                                  icon: Icon(
+                                    call.isFeatured
+                                        ? Icons.lightbulb
+                                        : Icons.lightbulb_outline,
+                                    color: call.isFeatured
+                                        ? Colors.yellow
+                                        : Colors.white,
+                                  ),
+                                  onPressed: () {
+                                    db.toggleFeaturedCall(
+                                        call.id, !call.isFeatured);
+                                  },
+                                );
+                              }
+                            }
+                            return const SizedBox.shrink();
+                          })
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -72,7 +105,6 @@ class CallCard extends StatelessWidget {
                   Chip(label: Text('Feeling: ${call.userMood!}')),
                 if (call.userLocation != null && call.userLocation!.isNotEmpty)
                   Chip(label: Text('From: ${call.userLocation!}')),
-
                 const SizedBox(height: 16),
                 Text(
                   '${call.startTime.toDate().toLocal()}'.split(' ')[0],

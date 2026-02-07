@@ -127,8 +127,11 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     }
   }
 
-  Future<void> _leaveChannel() async {
+  Future<void> _leaveChannel({bool endCall = false}) async {
     await _stopRecordingAndUpload();
+    if (endCall) {
+      await _db.endCall(widget.call.id);
+    }
     await _agoraService.leaveChannel();
   }
 
@@ -278,6 +281,11 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   }
 
   Widget _bottomControls(BuildContext context, UserModel user) {
+    final bool isHost = user.uid == widget.call.hostId;
+    final bool isPrivilegedUser = isHost || user.isAdmin || user.isSuperAdmin;
+    final bool isJustAdmin = user.isAdmin && !user.isSuperAdmin;
+    final bool canLeaveQuietly = !isJustAdmin || isHost;
+
     return Column(
       children: [
         if (_isBroadcaster)
@@ -314,25 +322,48 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
             ),
           ),
         const SizedBox(height: 12),
-        ElevatedButton(
-          onPressed: () async {
-            final navigator = Navigator.of(context);
-            await _leaveChannel();
-            navigator.pop();
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            minimumSize: const Size(double.infinity, 54),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+        if (isPrivilegedUser) ...[
+          ElevatedButton(
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              await _leaveChannel(endCall: true);
+              navigator.pop();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 54),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: const Text(
+              "End Call",
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
-          child: const Text(
-            "Leave Quietly",
-            style: TextStyle(fontWeight: FontWeight.bold),
+          const SizedBox(height: 12),
+        ],
+        if (canLeaveQuietly)
+          ElevatedButton(
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              await _leaveChannel();
+              navigator.pop();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+              minimumSize: const Size(double.infinity, 54),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: const Text(
+              "Leave Quietly",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
-        ),
       ],
     );
   }
