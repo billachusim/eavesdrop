@@ -159,7 +159,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                 'accepted': false,
                 'rejected': false,
                 'connected': false,
-                'callEnd': false,
+                'hasEnded': false,
               },
               SetOptions(merge: true));
         });

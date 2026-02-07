@@ -21,7 +21,7 @@ class CallModel {
   final bool accepted;
   final bool rejected;
   final bool connected;
-  final bool callEnd;
+  final bool hasEnded;
 
   CallModel({
     required this.id,
@@ -44,7 +44,7 @@ class CallModel {
     this.accepted = false,
     this.rejected = false,
     this.connected = false,
-    this.callEnd = false,
+    this.hasEnded = false,
   });
 
   factory CallModel.fromMap(Map<String, dynamic> data, String documentId) {
@@ -69,7 +69,7 @@ class CallModel {
       accepted: data['accepted'] as bool? ?? false,
       rejected: data['rejected'] as bool? ?? false,
       connected: data['connected'] as bool? ?? false,
-      callEnd: data['callEnd'] as bool? ?? false,
+      hasEnded: data['hasEnded'] as bool? ?? false,
     );
   }
 
@@ -94,7 +94,7 @@ class CallModel {
       'accepted': accepted,
       'rejected': rejected,
       'connected': connected,
-      'callEnd': callEnd,
+      'hasEnded': hasEnded,
     };
   }
 }
