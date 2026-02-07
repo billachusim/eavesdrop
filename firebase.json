@@ -1,0 +1,33 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "eavesdrop-f2e92",
+          "appId": "1:1019606290424:android:8e0f6a6712c0fc8e3d900d",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "eavesdrop-f2e92",
+          "appId": "1:1019606290424:ios:8d6ae96c65c7ea293d900d",
+          "uploadDebugSymbols": true,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "eavesdrop-f2e92",
+          "configurations": {
+            "android": "1:1019606290424:android:8e0f6a6712c0fc8e3d900d",
+            "ios": "1:1019606290424:ios:8d6ae96c65c7ea293d900d"
+          }
+        }
+      }
+    }
+  },
+  "functions": {
+    "source": "functions"
+  }
+}
