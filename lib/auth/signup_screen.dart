@@ -1,6 +1,4 @@
 import 'package:eavesdrop/auth/auth_service.dart';
-import 'package:eavesdrop/models/user_model.dart';
-import 'package:eavesdrop/services/database_service.dart';
 import 'package:flutter/material.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -12,11 +10,11 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen> {
   final AuthService _auth = AuthService();
-  final DatabaseService _db = DatabaseService();
   final _formKey = GlobalKey<FormState>();
 
   String email = '';
   String password = '';
+  String displayName = ''; // Add displayName state
   String error = '';
 
   @override
@@ -31,6 +29,14 @@ class _SignupScreenState extends State<SignupScreen> {
           key: _formKey,
           child: Column(
             children: <Widget>[
+              TextFormField(
+                decoration: const InputDecoration(labelText: 'Display Name'), // Add displayName field
+                validator: (val) => val!.isEmpty ? 'Enter a display name' : null,
+                onChanged: (val) {
+                  setState(() => displayName = val);
+                },
+              ),
+              const SizedBox(height: 20),
               TextFormField(
                 decoration: const InputDecoration(labelText: 'Email'),
                 validator: (val) => val!.isEmpty ? 'Enter an email' : null,
@@ -54,11 +60,13 @@ class _SignupScreenState extends State<SignupScreen> {
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
                     final navigator = Navigator.of(context);
-                    dynamic result = await _auth.signUpWithEmailAndPassword(email, password);
+                    // Pass displayName to the function
+                    dynamic result = await _auth.signUpWithEmailAndPassword(
+                        email, password, displayName);
                     if (result == null) {
                       setState(() => error = 'Please supply a valid email');
                     } else {
-                      await _db.createUser(UserModel(uid: result.uid, email: email));
+                      // No need to create user here, AuthService does it.
                       if (!mounted) return;
                       navigator.pop();
                     }

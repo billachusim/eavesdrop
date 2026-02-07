@@ -45,6 +45,18 @@ class DatabaseService {
     }
   }
 
+  // Activate premium subscription
+  Future<void> activatePremiumSubscription(String uid) async {
+    try {
+      await _db.collection('users').doc(uid).update({
+        'isPremium': true,
+        'premiumExpiryDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 30))),
+      });
+    } catch (e) {
+      // print(e.toString());
+    }
+  }
+
   // Get a user's calls
   Stream<List<CallModel>> streamCalls(String uid) {
     return _db

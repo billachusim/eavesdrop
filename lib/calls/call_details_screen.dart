@@ -1,7 +1,6 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:eavesdrop/models/call_model.dart';
 import 'package:flutter/material.dart';
-import 'dart:ui';
 
 class CallDetailsScreen extends StatefulWidget {
   final CallModel call;

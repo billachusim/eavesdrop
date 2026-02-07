@@ -23,9 +23,9 @@ class CallCard extends StatelessWidget {
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: Colors.white.withOpacity(0.2)),
+              border: Border.all(color: Colors.white.withAlpha(51)),
               gradient: LinearGradient(
-                colors: [Colors.white.withOpacity(0.15), Colors.white.withOpacity(0.05)],
+                colors: [Colors.white.withAlpha(38), Colors.white.withAlpha(13)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -37,7 +37,7 @@ class CallCard extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       // Later, we can use a switch statement on call.personalityAvatar to show different images
-                      backgroundColor: Colors.white.withOpacity(0.3),
+                      backgroundColor: Colors.white.withAlpha(77),
                       child: const Icon(Icons.person, color: Colors.white),
                     ),
                     const SizedBox(width: 12),

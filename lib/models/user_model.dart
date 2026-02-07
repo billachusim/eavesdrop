@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class UserModel {
   final String uid;
   final String? email;
@@ -6,6 +8,8 @@ class UserModel {
   final bool isAdmin;
   final bool isSuperAdmin;
   final String? fcmToken;
+  final bool isPremium;
+  final Timestamp? premiumExpiryDate;
 
   UserModel({
     required this.uid,
@@ -15,6 +19,8 @@ class UserModel {
     this.isAdmin = false,
     this.isSuperAdmin = false,
     this.fcmToken,
+    this.isPremium = false,
+    this.premiumExpiryDate,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> data, String documentId) {
@@ -26,6 +32,8 @@ class UserModel {
       isAdmin: data['isAdmin'] as bool? ?? false,
       isSuperAdmin: data['isSuperAdmin'] as bool? ?? false,
       fcmToken: data['fcmToken'] as String?,
+      isPremium: data['isPremium'] as bool? ?? false,
+      premiumExpiryDate: data['premiumExpiryDate'] as Timestamp?,
     );
   }
 
@@ -37,6 +45,8 @@ class UserModel {
       'isAdmin': isAdmin,
       'isSuperAdmin': isSuperAdmin,
       'fcmToken': fcmToken,
+      'isPremium': isPremium,
+      'premiumExpiryDate': premiumExpiryDate,
     };
   }
 }

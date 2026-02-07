@@ -1,8 +1,5 @@
-
 import 'dart:async';
-
 import 'package:eavesdrop/admin/admin_dashboard.dart';
-import 'package:eavesdrop/auth/auth_service.dart';
 import 'package:eavesdrop/booking/booking_screen.dart';
 import 'package:eavesdrop/calls/my_calls_screen.dart';
 import 'package:eavesdrop/credits_screen.dart';
@@ -26,7 +23,6 @@ class LiveHomeScreen extends StatefulWidget {
 class _LiveHomeScreenState extends State<LiveHomeScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
-  final AuthService _auth = AuthService();
   final DatabaseService _db = DatabaseService();
 
   late StreamSubscription _liveCallsSubscription;
@@ -196,10 +192,10 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
                         ),
                       ),
                     ),
-              SliverToBoxAdapter(
+              const SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 40, 20, 20),
-                  child: const Text("Upcoming",
+                  padding: EdgeInsets.fromLTRB(20, 40, 20, 20),
+                  child: Text("Upcoming",
                       style:
                           TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                 ),
@@ -306,7 +302,7 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
                 label: const Text('Set Reminder'),
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,
-                  backgroundColor: Colors.white.withOpacity(0.2),
+                  backgroundColor: Colors.white.withAlpha(51),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -328,7 +324,7 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: Colors.red.withAlpha((255 * 0.15).round()),
+            color: Colors.red.withAlpha(38),
             blurRadius: 25,
             spreadRadius: 1,
           )
@@ -342,8 +338,7 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
               ScaleTransition(
                 scale: _pulseController,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.red,
                     borderRadius: BorderRadius.circular(8),
