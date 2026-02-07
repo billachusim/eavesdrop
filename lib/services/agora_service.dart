@@ -68,12 +68,15 @@ class AgoraService {
   }
 
   // Start recording
-  Future<void> startRecording(String channelName) async {
+  Future<void> startRecording() async {
     final directory = await getApplicationDocumentsDirectory();
-    _recordingPath = '${directory.path}/$channelName.m4a';
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}.aac';
+    _recordingPath = '${directory.path}/$fileName';
     await _engine.startAudioRecording(
       AudioRecordingConfiguration(
         filePath: _recordingPath!,
+        // This was the missing parameter causing the error
+        fileRecordingType: AudioFileRecordingType.audioFileRecordingMixed,
         quality: AudioRecordingQualityType.audioRecordingQualityMedium,
       ),
     );
