@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1019606290424",
+    "project_id": "eavesdrop-f2e92",
+    "storage_bucket": "eavesdrop-f2e92.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1019606290424:android:8e0f6a6712c0fc8e3d900d",
+        "android_client_info": {
+          "package_name": "com.socialfaculty.eavesdrop"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAU7fkPVLK7d9fLnINd99BlBKfzxdNQNiQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

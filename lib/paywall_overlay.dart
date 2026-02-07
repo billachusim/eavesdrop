@@ -1,19 +1,26 @@
 import 'dart:ui';
 import 'package:eavesdrop/credits_screen.dart';
+import 'package:eavesdrop/models/user_model.dart';
+import 'package:eavesdrop/services/database_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class PaywallOverlay extends StatelessWidget {
-  const PaywallOverlay({super.key});
+  final UserModel user;
+  final VoidCallback onUnlock;
+
+  const PaywallOverlay({super.key, required this.user, required this.onUnlock});
 
   @override
   Widget build(BuildContext context) {
     final textTheme = GoogleFonts.interTextTheme();
+    final db = DatabaseService();
+    const cost = 5;
 
     return BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
       child: Container(
-        color: Colors.black.withOpacity(0.75),
+        color: Colors.black.withAlpha((255 * 0.75).round()),
         child: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -26,15 +33,12 @@ class PaywallOverlay extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-
                   const Icon(
                     Icons.lock,
                     size: 42,
                     color: Colors.white,
                   ),
-
                   const SizedBox(height: 16),
-
                   Text(
                     "Continue Listening",
                     style: textTheme.headlineSmall!.copyWith(
@@ -42,17 +46,13 @@ class PaywallOverlay extends StatelessWidget {
                       color: Colors.white,
                     ),
                   ),
-
                   const SizedBox(height: 10),
-
                   const Text(
                     "This conversation just got interesting...\nUnlock the room to hear the rest.",
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.white70),
                   ),
-
                   const SizedBox(height: 12),
-
                   const Text(
                     "8,241 people are still listening",
                     style: TextStyle(
@@ -60,38 +60,36 @@ class PaywallOverlay extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-
                   const SizedBox(height: 24),
-
-                  /// UNLOCK BUTTON
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const CreditsScreen()),
-                        );
+                      onPressed: () async {
+                        if (user.credits >= cost) {
+                          await db.updateUserCredits(user.uid, -cost);
+                          onUnlock();
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const CreditsScreen()),
+                          );
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.black,
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 16),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                       child: const Text(
-                        "Unlock Room — 5 Credits",
-                        style:
-                            TextStyle(fontWeight: FontWeight.bold),
+                        "Unlock Room — $cost Credits",
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 10),
-
                   TextButton(
                     onPressed: () {
                       Navigator.pop(context);

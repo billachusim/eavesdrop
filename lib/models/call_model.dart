@@ -9,6 +9,12 @@ class CallModel {
   final Timestamp startTime;
   final String channelName;
   final int listeners;
+  final String title;
+  final String userNickname;
+  final String personalityAvatar;
+  final String? userLocation;
+  final String? userMood;
+  final String? recordingUrl;
 
   CallModel({
     required this.id,
@@ -19,6 +25,12 @@ class CallModel {
     required this.startTime,
     required this.channelName,
     this.listeners = 0,
+    required this.title,
+    required this.userNickname,
+    required this.personalityAvatar,
+    this.userLocation,
+    this.userMood,
+    this.recordingUrl,
   });
 
   factory CallModel.fromMap(Map<String, dynamic> data, String documentId) {
@@ -31,6 +43,12 @@ class CallModel {
       startTime: data['startTime'] as Timestamp,
       channelName: data['channelName'] as String,
       listeners: data['listeners'] as int? ?? 0,
+      title: data['title'] as String,
+      userNickname: data['userNickname'] as String,
+      personalityAvatar: data['personalityAvatar'] as String,
+      userLocation: data['userLocation'] as String?,
+      userMood: data['userMood'] as String?,
+      recordingUrl: data['recordingUrl'] as String?,
     );
   }
 
@@ -43,6 +61,12 @@ class CallModel {
       'startTime': startTime,
       'channelName': channelName,
       'listeners': listeners,
+      'title': title,
+      'userNickname': userNickname,
+      'personalityAvatar': personalityAvatar,
+      'userLocation': userLocation,
+      'userMood': userMood,
+      'recordingUrl': recordingUrl,
     };
   }
 }

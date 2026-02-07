@@ -111,7 +111,7 @@ class CreditCard extends StatelessWidget {
         boxShadow: highlight
             ? [
                 BoxShadow(
-                  color: Colors.greenAccent.withOpacity(0.25),
+                  color: Colors.greenAccent.withValues(alpha: 0.25),
                   blurRadius: 20,
                 )
               ]
