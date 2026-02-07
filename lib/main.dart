@@ -3,6 +3,7 @@ import 'package:eavesdrop/auth/wrapper.dart';
 import 'package:eavesdrop/services/notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +12,14 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 
 final NotificationService _notificationService = NotificationService();
+
+// Must be a top-level function
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  _notificationService.showIncomingCall(message.data['callId']);
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +31,7 @@ void main() async {
     providerApple: kDebugMode ? const AppleDebugProvider() : const AppleAppAttestProvider(),
   );
   await _notificationService.initialize();
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   runApp(const MyApp());
 }
 
@@ -30,9 +40,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamProvider<User?>.value(
-      value: AuthService().user,
-      initialData: null,
+    return MultiProvider(
+      providers: [
+        StreamProvider<User?>.value(
+          value: AuthService().user,
+          initialData: null,
+        ),
+        Provider<NotificationService>.value(value: _notificationService),
+      ],
       child: MaterialApp(
         navigatorKey: _notificationService.navigatorKey,
         title: 'Eavesdrop',

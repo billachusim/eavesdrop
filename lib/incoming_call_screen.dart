@@ -2,6 +2,7 @@ import 'package:eavesdrop/live_call_screen.dart';
 import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/services/notification_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class IncomingCallScreen extends StatelessWidget {
   final CallModel call;
@@ -10,7 +11,7 @@ class IncomingCallScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final NotificationService notificationService = NotificationService();
+    final notificationService = Provider.of<NotificationService>(context, listen: false);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0B0B0B),

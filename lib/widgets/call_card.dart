@@ -5,13 +5,35 @@ import 'package:eavesdrop/services/database_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class CallCard extends StatelessWidget {
   final CallModel call;
   final VoidCallback onTap;
+  final VoidCallback onPlayRecording;
 
-  const CallCard({super.key, required this.call, required this.onTap});
+  const CallCard(
+      {super.key,
+      required this.call,
+      required this.onTap,
+      required this.onPlayRecording});
+
+  String _getOrdinal(int number) {
+    if (number >= 11 && number <= 13) {
+      return '${number}th';
+    }
+    switch (number % 10) {
+      case 1:
+        return '${number}st';
+      case 2:
+        return '${number}nd';
+      case 3:
+        return '${number}rd';
+      default:
+        return '${number}th';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,6 +41,25 @@ class CallCard extends StatelessWidget {
         call.recordingUrl != null && call.recordingUrl!.isNotEmpty;
     final user = Provider.of<User?>(context);
     final db = DatabaseService();
+
+    final start = call.startTime.toDate().toLocal();
+    final end = start.add(const Duration(hours: 1));
+
+    const durationText = 'One Hour Call';
+
+    final dayOfWeek = DateFormat.E().format(start);
+    final dayOfMonth = _getOrdinal(start.day);
+    final month = DateFormat.MMM().format(start);
+    final year = start.year;
+    final dateString = '$dayOfWeek, $dayOfMonth $month, $year';
+
+    final timeFormat = DateFormat('ha');
+    final startTimeString = timeFormat.format(start).toLowerCase();
+    final endTimeString = timeFormat.format(end).toLowerCase();
+    final timeRangeString = '$startTimeString to $endTimeString';
+
+    final fullDateTimeString =
+        '$durationText on $dateString between $timeRangeString';
 
     return GestureDetector(
       onTap: onTap,
@@ -32,7 +73,10 @@ class CallCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(28),
               border: Border.all(color: Colors.white.withAlpha(51)),
               gradient: LinearGradient(
-                colors: [Colors.white.withAlpha(38), Colors.white.withAlpha(13)],
+                colors: [
+                  Colors.white.withAlpha(38),
+                  Colors.white.withAlpha(13)
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -103,18 +147,20 @@ class CallCard extends StatelessWidget {
                 const SizedBox(height: 16),
                 if (call.userMood != null && call.userMood!.isNotEmpty)
                   Chip(label: Text('Feeling: ${call.userMood!}')),
-                if (call.userLocation != null && call.userLocation!.isNotEmpty)
+                if (call.userLocation != null &&
+                    call.userLocation!.isNotEmpty)
                   Chip(label: Text('From: ${call.userLocation!}')),
                 const SizedBox(height: 16),
                 Text(
-                  '${call.startTime.toDate().toLocal()}'.split(' ')[0],
+                  fullDateTimeString,
                   style: GoogleFonts.inter(color: Colors.white70),
                 ),
                 if (hasRecording)
                   Padding(
                     padding: const EdgeInsets.only(top: 16.0),
                     child: ElevatedButton.icon(
-                      onPressed: onTap, // Or a separate function for playback
+                      onPressed:
+                          onPlayRecording, // Or a separate function for playback
                       icon: const Icon(Icons.play_circle_fill),
                       label: const Text('Listen to Recording'),
                       style: ElevatedButton.styleFrom(

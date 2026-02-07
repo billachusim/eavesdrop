@@ -1,4 +1,5 @@
 import 'package:eavesdrop/calls/call_details_screen.dart';
+import 'package:eavesdrop/live_call_screen.dart';
 import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/services/database_service.dart';
 import 'package:eavesdrop/widgets/call_card.dart';
@@ -33,6 +34,16 @@ class MyCallsScreen extends StatelessWidget {
                   child: CallCard(
                     call: call,
                     onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => call.isLive
+                              ? LiveCallScreen(call: call)
+                              : CallDetailsScreen(call: call),
+                        ),
+                      );
+                    },
+                    onPlayRecording: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(

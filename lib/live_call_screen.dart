@@ -128,10 +128,10 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   }
 
   Future<void> _leaveChannel({bool endCall = false}) async {
-    await _stopRecordingAndUpload();
     if (endCall) {
       await _db.endCall(widget.call.id);
     }
+    await _stopRecordingAndUpload();
     await _agoraService.leaveChannel();
   }
 
@@ -152,6 +152,9 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
               }
 
               final userModel = snapshot.data!;
+              final isHost = userModel.uid == widget.call.hostId;
+              final isPrivilegedUser =
+                  isHost || userModel.isAdmin || userModel.isSuperAdmin;
 
               return Scaffold(
                 backgroundColor: const Color(0xFF0B0B0B),
@@ -166,7 +169,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
                           child: Column(
                             children: [
                               const SizedBox(height: 12),
-                              _topBar(context),
+                              _topBar(context, isPrivilegedUser),
                               const SizedBox(height: 30),
                               Text(
                                 widget.call.title,
@@ -215,7 +218,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
         : const OnboardingScreen();
   }
 
-  Widget _topBar(BuildContext context) {
+  Widget _topBar(BuildContext context, bool isPrivilegedUser) {
     return Row(
       children: [
         Container(
@@ -243,7 +246,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
           icon: const Icon(Icons.close),
           onPressed: () async {
             final navigator = Navigator.of(context);
-            await _leaveChannel();
+            await _leaveChannel(endCall: isPrivilegedUser);
             navigator.pop();
           },
         )

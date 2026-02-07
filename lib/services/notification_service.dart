@@ -22,24 +22,23 @@ class NotificationService {
       }
     });
 
+    // For handling notification when the app is in terminated state
+    FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
+      if (message != null) {
+        showIncomingCall(message.data['callId']);
+      }
+    });
+
     // Foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      // print('Got a message whilst in the foreground!');
-      // print('Message data: ${message.data}');
-
       if (message.notification != null) {
-        // print('Message also contained a notification: ${message.notification}');
-        // Play ringing sound
-        playRingingSound();
-        // Show incoming call screen
-        _showIncomingCall(message.data['callId']);
+        showIncomingCall(message.data['callId']);
       }
     });
 
     // Background messages
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      // print('A new onMessageOpenedApp event was published!');
-      _showIncomingCall(message.data['callId']);
+      showIncomingCall(message.data['callId']);
     });
   }
 
@@ -73,9 +72,10 @@ class NotificationService {
     }
   }
 
-  void _showIncomingCall(String callId) async {
+  void showIncomingCall(String callId) async {
     final call = await _db.getCallById(callId);
     if (call != null) {
+      playRingingSound();
       navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => IncomingCallScreen(call: call),

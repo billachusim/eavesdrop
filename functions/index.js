@@ -61,6 +61,7 @@ exports.scheduledCallHandler = functions.pubsub.schedule("every 1 minutes").onRu
   // Get all calls that are not live and are scheduled to start
   const query = callsRef
       .where("isLive", "==", false)
+      .where("hasEnded", "==", false)
       .where("startTime", "<=", now);
 
   const snapshot = await query.get();

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 class CallDetailsScreen extends StatefulWidget {
   final CallModel call;
 
-  const CallDetailsScreen({Key? key, required this.call}) : super(key: key);
+  const CallDetailsScreen({super.key, required this.call});
 
   @override
   State<CallDetailsScreen> createState() => _CallDetailsScreenState();
@@ -20,7 +20,6 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
   @override
   void initState() {
     super.initState();
-
     _audioPlayer.onPlayerStateChanged.listen((state) {
       if (mounted) {
         setState(() {
@@ -63,48 +62,47 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Nickname: ${widget.call.userNickname}', style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 10),
-            Text('Avatar: ${widget.call.personalityAvatar}', style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 10),
-            Text('Date: ${widget.call.startTime.toDate().toLocal()}'.split(' ')[0], style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 10),
-            if (widget.call.userLocation != null && widget.call.userLocation!.isNotEmpty)
-              Text('Location: ${widget.call.userLocation}', style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 10),
-            if (widget.call.userMood != null && widget.call.userMood!.isNotEmpty)
-              Text('Mood: ${widget.call.userMood}', style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 20),
-            if (widget.call.recordingUrl != null)
+            Text(
+              widget.call.title,
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'with ${widget.call.userNickname}',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 16),
+            if (widget.call.recordingUrl != null &&
+                widget.call.recordingUrl!.isNotEmpty)
               Column(
                 children: [
                   Slider(
-                    min: 0,
-                    max: _duration.inSeconds.toDouble(),
-                    value: _position.inSeconds.toDouble(),
                     onChanged: (value) async {
                       final position = Duration(seconds: value.toInt());
                       await _audioPlayer.seek(position);
-                      await _audioPlayer.resume();
                     },
+                    value: _position.inSeconds.toDouble(),
+                    min: 0.0,
+                    max: _duration.inSeconds.toDouble(),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(formatTime(_position)),
-                        Text(formatTime(_duration - _position)),
-                      ],
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(_position.toString().split('.').first),
+                      Text(_duration.toString().split('.').first),
+                    ],
                   ),
                   IconButton(
-                    icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow, size: 48),
+                    icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
+                    iconSize: 64,
                     onPressed: () async {
                       if (_isPlaying) {
                         await _audioPlayer.pause();
                       } else {
-                        await _audioPlayer.play(UrlSource(widget.call.recordingUrl!));
+                        if (widget.call.recordingUrl != null) {
+                          await _audioPlayer
+                              .play(UrlSource(widget.call.recordingUrl!));
+                        }
                       }
                     },
                   ),
@@ -114,14 +112,5 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
         ),
       ),
     );
-  }
-
-  String formatTime(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = twoDigits(duration.inHours);
-    final minutes = twoDigits(duration.inMinutes.remainder(60));
-    final seconds = twoDigits(duration.inSeconds.remainder(60));
-
-    return [if (duration.inHours > 0) hours, minutes, seconds].join(':');
   }
 }

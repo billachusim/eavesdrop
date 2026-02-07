@@ -27,7 +27,7 @@ class DatabaseService {
   Future<void> bookCall(CallModel call, int cost) async {
     try {
       DocumentReference docRef = await _db.collection('calls').add(call.toMap());
-      await docRef.update({'channelName': docRef.id});
+      await docRef.update({'channelName': docRef.id, 'hasEnded': false});
       await updateUserCredits(call.hostId, -cost);
     } catch (e) {
       // print(e.toString());
@@ -61,7 +61,7 @@ class DatabaseService {
   Stream<List<CallModel>> streamCalls(String uid) {
     return _db
         .collection('calls')
-        .where('hostId', isEqualTo: uid)
+        .where('callerId', isEqualTo: uid)
         .snapshots()
         .map((snap) =>
             snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
@@ -94,6 +94,18 @@ class DatabaseService {
         .where('isLive', isEqualTo: false)
         .where('isFeatured', isEqualTo: true)
         .where('startTime', isGreaterThan: Timestamp.now())
+        .snapshots()
+        .map((snap) =>
+        snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
+  }
+
+  // Get all of a user's upcoming calls
+  Stream<List<CallModel>> streamUserUpcomingCalls(String uid) {
+    return _db
+        .collection('calls')
+        .where('isLive', isEqualTo: false)
+        .where('startTime', isGreaterThan: Timestamp.now())
+        .where('callerId', isEqualTo: uid)
         .snapshots()
         .map((snap) =>
         snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
@@ -161,6 +173,7 @@ class DatabaseService {
     try {
       await _db.collection('calls').doc(callId).update({
         'isLive': false,
+        'hasEnded': true,
       });
     } catch (e) {
       // print(e.toString());
