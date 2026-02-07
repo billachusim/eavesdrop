@@ -1,5 +1,9 @@
+import 'package:eavesdrop/models/user_model.dart';
+import 'package:eavesdrop/services/database_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class CreditsScreen extends StatelessWidget {
   const CreditsScreen({super.key});
@@ -7,6 +11,8 @@ class CreditsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = GoogleFonts.interTextTheme();
+    final user = Provider.of<User?>(context);
+    final db = DatabaseService();
 
     return Scaffold(
       backgroundColor: const Color(0xFF0B0B0B),
@@ -22,6 +28,40 @@ class CreditsScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Live Credit Balance Display
+              if (user != null)
+                StreamBuilder<UserModel>(
+                  stream: db.streamUser(user.uid),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (!snapshot.hasData) {
+                      return const SizedBox.shrink(); // Or a default view
+                    }
+                    final userModel = snapshot.data!;
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const Text(
+                            "YOUR BALANCE",
+                            style: TextStyle(color: Colors.white70, letterSpacing: 1.5),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "${userModel.credits} Credits",
+                            style: textTheme.headlineMedium!.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
 
               const SizedBox(height: 10),
 
@@ -111,7 +151,7 @@ class CreditCard extends StatelessWidget {
         boxShadow: highlight
             ? [
                 BoxShadow(
-                  color: Colors.greenAccent.withValues(alpha: 0.25),
+                  color: Colors.greenAccent.withAlpha(64), // Adjusted for non-deprecated use
                   blurRadius: 20,
                 )
               ]
@@ -120,7 +160,6 @@ class CreditCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           if (highlight)
             Container(
               padding:
@@ -139,7 +178,7 @@ class CreditCard extends StatelessWidget {
               ),
             ),
 
-          const SizedBox(height: 10),
+          if (highlight) const SizedBox(height: 10),
 
           Text(
             title,

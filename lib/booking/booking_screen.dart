@@ -25,9 +25,14 @@ class _BookingScreenState extends State<BookingScreen> {
   String _nickname = '';
   String _location = '';
   String _mood = '';
+  bool _isPrivate = false;
   String _selectedAvatar = 'Claire'; // Default avatar
 
-  final List<String> _avatars = ['Claire', 'The Brutally Honest Friend', 'The Therapist'];
+  final List<String> _avatars = [
+    'Claire',
+    'The Brutally Honest Friend',
+    'The Therapist'
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -88,14 +93,16 @@ class _BookingScreenState extends State<BookingScreen> {
               ),
               const SizedBox(height: 20),
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Your Location (Optional)'),
+                decoration: const InputDecoration(
+                    labelText: 'Your Location (Optional)'),
                 onChanged: (val) {
                   setState(() => _location = val);
                 },
               ),
               const SizedBox(height: 20),
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Your Mood (Optional)'),
+                decoration:
+                    const InputDecoration(labelText: 'Your Mood (Optional)'),
                 onChanged: (val) {
                   setState(() => _mood = val);
                 },
@@ -117,16 +124,36 @@ class _BookingScreenState extends State<BookingScreen> {
                 },
               ),
               const SizedBox(height: 20),
+              SwitchListTile(
+                title: const Text('Private Call'),
+                subtitle: const Text(
+                    'Private calls will not appear on the public feed'),
+                value: _isPrivate,
+                onChanged: (bool value) {
+                  setState(() {
+                    _isPrivate = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () async {
-                  if (_formKey.currentState!.validate() && _selectedDay != null && user != null) {
+                  if (user == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Please log in to book a call.')),
+                    );
+                    return;
+                  }
+                  if (_formKey.currentState!.validate() &&
+                      _selectedDay != null) {
                     final navigator = Navigator.of(context);
                     final scaffoldMessenger = ScaffoldMessenger.of(context);
                     final call = CallModel(
                       id: '', // Firestore will generate this
                       hostId: user.uid,
-                      callerId: 'placeholder_caller', // To be assigned later
-                      isPrivate: false, // Default to public
+                      callerId: user.uid, // Using the host's ID for now
+                      isPrivate: _isPrivate,
                       isLive: false,
                       startTime: Timestamp.fromDate(_selectedDay!),
                       channelName: '', // To be generated when the call starts
@@ -142,7 +169,8 @@ class _BookingScreenState extends State<BookingScreen> {
                     if (!mounted) return;
 
                     scaffoldMessenger.showSnackBar(
-                      const SnackBar(content: Text('Call booked successfully!')),
+                      const SnackBar(
+                          content: Text('Call booked successfully!')),
                     );
 
                     navigator.pop();

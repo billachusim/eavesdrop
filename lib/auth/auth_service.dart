@@ -1,20 +1,34 @@
+import 'package:eavesdrop/models/user_model.dart';
+import 'package:eavesdrop/services/database_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final DatabaseService _db = DatabaseService();
 
   // Stream for auth state changes
   Stream<User?> get user => _auth.authStateChanges();
 
   // Sign up with email and password
-  Future<User?> signUpWithEmailAndPassword(String email, String password) async {
+  Future<User?> signUpWithEmailAndPassword(
+      String email, String password, String displayName) async {
     try {
       UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-      return result.user;
+      User? user = result.user;
+      if (user != null) {
+        // Create a new user document with initial credits
+        await _db.createUser(UserModel(
+          uid: user.uid,
+          email: user.email,
+          displayName: displayName,
+          credits: 100, // New users get 100 free credits
+        ));
+      }
+      return user;
     } catch (e) {
       if (kDebugMode) {
         print(e.toString());

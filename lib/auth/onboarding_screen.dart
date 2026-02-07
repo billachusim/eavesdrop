@@ -1,7 +1,5 @@
-
 import 'package:eavesdrop/auth/auth_service.dart';
-import 'package:eavesdrop/models/user_model.dart';
-import 'package:eavesdrop/services/database_service.dart';
+import 'package:eavesdrop/widgets/primary_button.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -137,21 +135,16 @@ class _SignUpTabState extends State<_SignUpTab> {
     setState(() => _isLoading = true);
 
     final auth = AuthService();
-    final db = DatabaseService();
     final navigator = Navigator.of(context);
 
     try {
-      dynamic result = await auth.signUpWithEmailAndPassword(
+      final result = await auth.signUpWithEmailAndPassword(
         _emailController.text,
         _passwordController.text,
+        _nicknameController.text,
       );
 
       if (result != null) {
-        await db.createUser(UserModel(
-          uid: result.uid,
-          email: _emailController.text,
-          displayName: _nicknameController.text,
-        ));
         if (!mounted) return;
         navigator.pop(); // Pop the onboarding screen on success
       }
@@ -230,12 +223,11 @@ class _SignUpTabState extends State<_SignUpTab> {
               ],
             ),
             const SizedBox(height: 20),
-            _isLoading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: _handleSignUp,
-                    child: const Text('Create Account'),
-                  ),
+            PrimaryButton(
+              text: 'Create Account',
+              onPressed: _handleSignUp,
+              isLoading: _isLoading,
+            ),
           ],
         ),
       ),
@@ -310,36 +302,33 @@ class _LoginTabState extends State<_LoginTab> {
                   val!.length < 6 ? 'Enter a password 6+ characters long' : null,
             ),
             const SizedBox(height: 20),
-            _isLoading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: _handleLogin,
-                    child: const Text('Log In'),
-                  ),
+            PrimaryButton(
+              text: 'Log In',
+              onPressed: _handleLogin,
+              isLoading: _isLoading,
+            ),
             const SizedBox(height: 20),
-             Text.rich(
-                    TextSpan(
-                      text: "By logging in, you agree to the ",
-                      style: widget.textTheme.bodySmall!
-                          .copyWith(color: Colors.white70),
-                      children: [
-                        TextSpan(
-                          text: "Terms & Policy",
-                          style: widget.textTheme.bodySmall!.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            decoration: TextDecoration.underline,
-                          ),
-                          recognizer: TapGestureRecognizer()
-                            ..onTap = widget.onPolicyTap,
-                        ),
-                      ],
+            Text.rich(
+              TextSpan(
+                text: "By logging in, you agree to the ",
+                style:
+                    widget.textTheme.bodySmall!.copyWith(color: Colors.white70),
+                children: [
+                  TextSpan(
+                    text: "Terms & Policy",
+                    style: widget.textTheme.bodySmall!.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      decoration: TextDecoration.underline,
                     ),
+                    recognizer: TapGestureRecognizer()..onTap = widget.onPolicyTap,
                   ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 }
-

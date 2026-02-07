@@ -74,6 +74,18 @@ class DatabaseService {
             snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
   }
 
+  // Get all upcoming calls
+  Stream<List<CallModel>> streamUpcomingCalls() {
+    return _db
+        .collection('calls')
+        .where('isLive', isEqualTo: false)
+        .where('startTime', isGreaterThan: Timestamp.now())
+        .snapshots()
+        .map((snap) =>
+        snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
+  }
+
+
   // Save user FCM token
   Future<void> saveUserToken(String uid, String token) async {
     try {
@@ -104,6 +116,15 @@ class DatabaseService {
       await _db.collection('calls').doc(callId).update({
         'recordingUrl': recordingUrl,
       });
+    } catch (e) {
+      // print(e.toString());
+    }
+  }
+
+  // Set a reminder for a call
+  Future<void> setReminder(String callId, String userId) async {
+    try {
+      await _db.collection('calls').doc(callId).collection('reminders').doc(userId).set({});
     } catch (e) {
       // print(e.toString());
     }
