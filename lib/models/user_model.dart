@@ -10,6 +10,8 @@ class UserModel {
   final String? fcmToken;
   final bool isPremium;
   final Timestamp? premiumExpiryDate;
+  final bool isHost;
+  final String? photoURL;
 
   UserModel({
     required this.uid,
@@ -21,6 +23,8 @@ class UserModel {
     this.fcmToken,
     this.isPremium = false,
     this.premiumExpiryDate,
+    this.isHost = false,
+    this.photoURL,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> data, String documentId) {
@@ -34,6 +38,8 @@ class UserModel {
       fcmToken: data['fcmToken'] as String?,
       isPremium: data['isPremium'] as bool? ?? false,
       premiumExpiryDate: data['premiumExpiryDate'] as Timestamp?,
+      isHost: data['isHost'] as bool? ?? false,
+      photoURL: data['photoURL'] as String?,
     );
   }
 
@@ -47,6 +53,8 @@ class UserModel {
       'fcmToken': fcmToken,
       'isPremium': isPremium,
       'premiumExpiryDate': premiumExpiryDate,
+      'isHost': isHost,
+      'photoURL': photoURL,
     };
   }
 }

@@ -1,0 +1,48 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class BookingModel {
+  final String? userId;
+  final String? nickname;
+  final String? bookingId;
+  final bool? isTrial;
+  final DateTime? bookingStart;
+  final DateTime? bookingEnd;
+  final String? title;
+  final String? mood;
+  final String? location;
+  final String? personalityAvatar;
+  final String? personalityId;
+  final bool? isPrivate;
+
+  BookingModel({
+    this.userId,
+    this.nickname,
+    this.bookingId,
+    this.isTrial,
+    this.bookingStart,
+    this.bookingEnd,
+    this.title,
+    this.mood,
+    this.location,
+    this.personalityAvatar,
+    this.personalityId,
+    this.isPrivate,
+  });
+
+  factory BookingModel.fromJson(Map<String, dynamic> json) {
+    return BookingModel(
+      userId: json['userId'],
+      nickname: json['nickname'],
+      bookingId: json['bookingId'],
+      isTrial: json['isTrial'],
+      bookingStart: (json['bookingStart'] as Timestamp).toDate(),
+      bookingEnd: (json['bookingEnd'] as Timestamp).toDate(),
+      title: json['title'],
+      mood: json['mood'],
+      location: json['location'],
+      personalityAvatar: json['personalityAvatar'],
+      personalityId: json['personalityId'],
+      isPrivate: json['isPrivate'],
+    );
+  }
+}
