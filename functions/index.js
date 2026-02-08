@@ -1,4 +1,5 @@
-const functions = require("firebase-functions/v1");
+const {onCall, HttpsError} = require("firebase-functions/v2/https");
+const {onSchedule} = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 const {RtcTokenBuilder, RtcRole} = require("agora-token");
 
@@ -8,24 +9,24 @@ admin.initializeApp();
 const APP_ID = "7cbfdc57592f47b2a939e2838238f066";
 const APP_CERTIFICATE = "9bca5f09b5ab41bfbb09b15230835f90";
 
-exports.generateAgoraToken = functions.https.onCall(async (data, context) => {
+exports.generateAgoraToken = onCall(async (request) => {
   // Authentication check
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
+  if (!request.auth) {
+    throw new HttpsError(
         "unauthenticated",
         "The function must be called while authenticated.",
     );
   }
 
-  const channelName = data.channelName;
+  const channelName = request.data.channelName;
   if (!channelName || typeof channelName !== "string") {
-    throw new functions.https.HttpsError(
+    throw new HttpsError(
         "invalid-argument",
         'The function must be called with "channelName".',
     );
   }
 
-  const uid = data.uid && typeof data.uid === "number" ? data.uid : 0;
+  const uid = request.data.uid && typeof request.data.uid === "number" ? request.data.uid : 0;
   const role = RtcRole.PUBLISHER;
   const expirationTimeInSeconds = 3600; // 1 hour
   const currentTimestamp = Math.floor(Date.now() / 1000);
@@ -38,7 +39,7 @@ exports.generateAgoraToken = functions.https.onCall(async (data, context) => {
         APP_ID,
         APP_CERTIFICATE,
         channelName,
-        uid, // Use the corrected UID
+        uid,
         role,
         privilegeExpiredTs,
     );
@@ -47,14 +48,14 @@ exports.generateAgoraToken = functions.https.onCall(async (data, context) => {
     return {token: token};
   } catch (error) {
     console.error("Error generating Agora token:", error);
-    throw new functions.https.HttpsError(
+    throw new HttpsError(
         "internal",
         "Failed to generate Agora token.",
     );
   }
 });
 
-exports.scheduledCallHandler = functions.pubsub.schedule("every 1 minutes").onRun(async (context) => {
+exports.scheduledCallHandler = onSchedule("every 1 minutes", async (event) => {
   const now = admin.firestore.Timestamp.now();
   const callsRef = admin.firestore().collection("calls");
 
@@ -71,7 +72,7 @@ exports.scheduledCallHandler = functions.pubsub.schedule("every 1 minutes").onRu
     return null;
   }
 
-  snapshot.forEach(async (doc) => {
+  for (const doc of snapshot.docs) {
     const call = doc.data();
     const callId = doc.id;
 
@@ -117,7 +118,7 @@ exports.scheduledCallHandler = functions.pubsub.schedule("every 1 minutes").onRu
         console.error(`Error sending notifications for call ${callId}:`, error);
       }
     }
-  });
+  }
 
   return null;
 });
