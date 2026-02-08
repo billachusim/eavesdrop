@@ -40,7 +40,7 @@ class _HomeGreetingSlidesState extends State<HomeGreetingSlides> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 240,
+      height: 260,
       width: double.infinity,
       child: Stack(
         alignment: Alignment.bottomCenter,
@@ -89,8 +89,8 @@ class _HomeGreetingSlidesState extends State<HomeGreetingSlides> {
 
   Widget _buildDot(int index, BuildContext context) {
     return Container(
-      height: 10,
-      width: 10,
+      height: 5,
+      width: 5,
       margin: const EdgeInsets.symmetric(horizontal: 5),
       decoration: BoxDecoration(
         shape: BoxShape.circle,

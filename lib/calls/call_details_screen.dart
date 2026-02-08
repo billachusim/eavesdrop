@@ -272,7 +272,7 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
             const Icon(Icons.mic_off_outlined, color: Colors.white54, size: 48),
             const SizedBox(height: 16),
             Text(
-              "This conversation was not recorded.",
+              "No recording on this conversation.",
               textAlign: TextAlign.center,
               style: textTheme.bodyLarge!.copyWith(color: Colors.white70),
             ),

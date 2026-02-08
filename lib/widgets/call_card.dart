@@ -289,7 +289,7 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
       );
     }
     return Text(
-      "This conversation was not recorded.",
+      "No recording on this conversation.",
       style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
     );
   }
