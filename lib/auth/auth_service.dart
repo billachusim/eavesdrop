@@ -12,7 +12,7 @@ class AuthService {
 
   // Sign up with email and password
   Future<User?> signUpWithEmailAndPassword(
-      String email, String password, String displayName) async {
+      String email, String password, String displayName, String photoURL) async {
     try {
       UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -25,7 +25,8 @@ class AuthService {
           uid: user.uid,
           email: user.email,
           displayName: displayName,
-          credits: 100, // New users get 100 free credits
+          photoURL: photoURL,
+          credits: 100,
         ));
       }
       return user;
