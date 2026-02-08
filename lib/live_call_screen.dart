@@ -192,7 +192,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
                                         isSpeaking: true,
                                       ),
                                       SpeakerAvatar(
-                                        name: widget.call.personalityAvatar,
+                                        name: widget.call.userNickname,
                                         image: "https://i.pravatar.cc/300?img=47",
                                         isSpeaking: false,
                                       ),

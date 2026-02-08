@@ -26,9 +26,7 @@ class LiveHomeScreen extends StatefulWidget {
   State<LiveHomeScreen> createState() => _LiveHomeScreenState();
 }
 
-class _LiveHomeScreenState extends State<LiveHomeScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _pulseController;
+class _LiveHomeScreenState extends State<LiveHomeScreen> {
   final DatabaseService _db = DatabaseService();
   bool _isMenuOpen = false;
 
@@ -43,16 +41,10 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
   void initState() {
     super.initState();
 
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-      lowerBound: 0.7,
-      upperBound: 1.2,
-    )..repeat(reverse: true);
-
     _setupCallsStream();
 
-    _featuredPastCallsSubscription = _db.streamFeaturedPastCalls().listen((calls) {
+    _featuredPastCallsSubscription =
+        _db.streamFeaturedPastCalls().listen((calls) {
       if (mounted) setState(() => _featuredPastCalls = calls);
     });
   }
@@ -94,7 +86,8 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
       _user = user;
       _userUpcomingCallsSubscription?.cancel();
       if (_user != null) {
-        _userUpcomingCallsSubscription = _db.streamUserUpcomingCalls(_user!.uid).listen((calls) {
+        _userUpcomingCallsSubscription =
+            _db.streamUserUpcomingCalls(_user!.uid).listen((calls) {
           if (mounted) setState(() => _userUpcomingCalls = calls);
         });
       } else {
@@ -107,7 +100,6 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
 
   @override
   void dispose() {
-    _pulseController.dispose();
     _callsStreamSubscription?.cancel();
     _userUpcomingCallsSubscription?.cancel();
     _featuredPastCallsSubscription.cancel();
@@ -122,7 +114,8 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
     for (var call in _userUpcomingCalls) {
       allCalls[call.channelName] = call;
     }
-    return allCalls.values.toList()..sort((a, b) => a.startTime.compareTo(b.startTime));
+    return allCalls.values.toList()
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
   }
 
   @override
@@ -158,7 +151,6 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
                 ],
                 bottom: _isMenuOpen
                     ? PreferredSize(
-                        // Increased height to prevent overflow if buttons wrap
                         preferredSize: const Size.fromHeight(80.0),
                         child: Center(
                           child: Container(
@@ -178,105 +170,18 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
           },
           body: CustomScrollView(
             slivers: <Widget>[
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Some conversations aren't meant for everyone...",
-                        style: textTheme.bodySmall!.copyWith(
-                          color: Colors.white70,
-                        ),
-                      ),
-                      const SizedBox(height: 40),
-                      const Text("Live Now",
-                          style: TextStyle(
-                              fontSize: 24, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
-              ),
-              _liveCalls.isEmpty
-                  ? const SliverToBoxAdapter(
-                      child: Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(20),
-                          child: Text("No live calls right now."),
-                        ),
-                      ),
-                    )
-                  : SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (BuildContext context, int index) {
-                            return _buildLiveCard(context, _liveCalls[index]);
-                          },
-                          childCount: _liveCalls.length,
-                        ),
-                      ),
-                    ),
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(20, 40, 20, 20),
-                  child: Text("Upcoming",
-                      style: TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.bold)),
-                ),
-              ),
-              _upcomingCalls.isEmpty
-                  ? const SliverToBoxAdapter(
-                      child: Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(20),
-                          child: Text("No upcoming calls scheduled."),
-                        ),
-                      ),
-                    )
-                  : SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (BuildContext context, int index) {
-                            return _buildUpcomingCallCard(
-                                context, _upcomingCalls[index]);
-                          },
-                          childCount: _upcomingCalls.length,
-                        ),
-                      ),
-                    ),
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(20, 40, 20, 20),
-                  child: Text("Featured Past Calls",
-                      style: TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.bold)),
-                ),
-              ),
-              _featuredPastCalls.isEmpty
-                  ? const SliverToBoxAdapter(
-                      child: Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(20),
-                          child: Text("No featured past calls available."),
-                        ),
-                      ),
-                    )
-                  : SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (BuildContext context, int index) {
-                            return _buildPastCallCard(
-                                context, _featuredPastCalls[index]);
-                          },
-                          childCount: _featuredPastCalls.length,
-                        ),
-                      ),
-                    ),
+              _buildSection(context,
+                  title: "Live Now",
+                  calls: _liveCalls,
+                  emptyMessage: "No live calls right now."),
+              _buildSection(context,
+                  title: "Upcoming",
+                  calls: _upcomingCalls,
+                  emptyMessage: "No upcoming calls scheduled."),
+              _buildSection(context,
+                  title: "Featured Past Calls",
+                  calls: _featuredPastCalls,
+                  emptyMessage: "No featured past calls available."),
             ],
           ),
         ),
@@ -294,13 +199,14 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
             MaterialPageRoute(builder: (context) => const BookingScreen()),
           );
         },
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
         child: const Icon(Icons.calendar_today),
       ),
     );
   }
 
   Widget _buildMenuButtons(User? user) {
-    // Helper method to navigate to OnboardingScreen
     void navigateToOnboarding() {
       Navigator.push(
         context,
@@ -363,8 +269,6 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
             );
           },
         ),
-
-        // This is the updated section
         if (user == null)
           TextButton.icon(
             icon: const Icon(Icons.login, color: Colors.white),
@@ -388,135 +292,74 @@ class _LiveHomeScreenState extends State<LiveHomeScreen>
     );
   }
 
+  Widget _buildSection(BuildContext context, {required String title, required List<CallModel> calls, required String emptyMessage}) {
+    final textTheme = GoogleFonts.interTextTheme();
 
-  Widget _buildPastCallCard(BuildContext context, CallModel call) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        children: [
-          CallCard(
-            call: call,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CallDetailsScreen(call: call),
-                ),
-              );
-            },
-            onPlayRecording: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Playback not implemented yet.')),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUpcomingCallCard(BuildContext context, CallModel call) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        children: [
-          CallCard(
-            call: call,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CallDetailsScreen(call: call),
-                ),
-              );
-            },
-            onPlayRecording: () {},
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLiveCard(BuildContext context, CallModel call) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      child: GestureDetector(
-        onTap: () {
-          RingtoneService.stopRingtone();
-          if (_user == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text('Please log in to join a call.')),
-            );
-            return;
-          }
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => LiveCallScreen(
-                call: call,
-              ),
-            ),
-          );
-        },
-        child: Card(
-          color: const Color(0xFF1A1A1A),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15.0),
-          ),
-          elevation: 5,
+    return SliverMainAxisGroup(
+      slivers: [
+        SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        call.title,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        const Icon(Icons.person, size: 16),
-                        const SizedBox(width: 4),
-                        Text(call.listeners.toString()),
-                        const SizedBox(width: 20),
-                        AnimatedBuilder(
-                          animation: _pulseController,
-                          builder: (context, child) {
-                            return Transform.scale(
-                              scale: _pulseController.value,
-                              child: child,
-                            );
-                          },
-                          child: Container(
-                            width: 15,
-                            height: 15,
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-              ],
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            child: Text(
+              title,
+              style: textTheme.labelLarge!.copyWith(
+                color: Colors.white54,
+                letterSpacing: 1.3,
+              ),
             ),
           ),
         ),
-      ),
+        if (calls.isEmpty)
+           SliverToBoxAdapter(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(emptyMessage, style: const TextStyle(color: Colors.white54),),
+              ),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (BuildContext context, int index) {
+                  final call = calls[index];
+                  return CallCard(
+                    call: call,
+                    onTap: () {
+                       if (call.isLive) {
+                         RingtoneService.stopRingtone();
+                         if (_user == null) {
+                           ScaffoldMessenger.of(context).showSnackBar(
+                             const SnackBar(content: Text('Please log in to join a call.')),
+                           );
+                           return;
+                         }
+                         Navigator.push(
+                           context,
+                           MaterialPageRoute(builder: (context) => LiveCallScreen(call: call)),
+                         );
+                       } else {
+                         Navigator.push(
+                           context,
+                           MaterialPageRoute(builder: (context) => CallDetailsScreen(call: call)),
+                         );
+                       }
+                    },
+                    onPlayRecording: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => CallDetailsScreen(call: call, autoplay: true)),
+                      );
+                    },
+                  );
+                },
+                childCount: calls.length,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

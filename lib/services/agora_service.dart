@@ -11,7 +11,12 @@ class AgoraService {
   Completer<void> _joinChannelCompleter = Completer<void>();
 
   // Initialize Agora
-  Future<void> initialize() async {
+  Future<void> initialize({
+    void Function(RtcConnection, List<AudioVolumeInfo>, int, int)?
+        onAudioVolumeIndication,
+    void Function(RtcConnection, int, int)? onUserJoined,
+    void Function(RtcConnection, int, UserOfflineReasonType)? onUserOffline,
+  }) async {
     _engine = createAgoraRtcEngine();
     await _engine.initialize(const RtcEngineContext(
       appId: agoraAppId,
@@ -29,12 +34,16 @@ class AgoraService {
         onLeaveChannel: (RtcConnection connection, RtcStats stats) {
           _joinChannelCompleter = Completer<void>();
         },
-        onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
-          // print('userJoined $remoteUid');
-        },
-        onUserOffline: (RtcConnection connection, int remoteUid, UserOfflineReasonType reason) {
-          // print('userOffline $remoteUid');
-        },
+        onUserJoined: onUserJoined ??
+            (RtcConnection connection, int remoteUid, int elapsed) {
+              // print('userJoined $remoteUid');
+            },
+        onUserOffline: onUserOffline ??
+            (RtcConnection connection, int remoteUid,
+                UserOfflineReasonType reason) {
+              // print('userOffline $remoteUid');
+            },
+        onAudioVolumeIndication: onAudioVolumeIndication,
       ),
     );
   }
@@ -75,7 +84,6 @@ class AgoraService {
     await _engine.startAudioRecording(
       AudioRecordingConfiguration(
         filePath: _recordingPath!,
-        // This was the missing parameter causing the error
         fileRecordingType: AudioFileRecordingType.audioFileRecordingMixed,
         quality: AudioRecordingQualityType.audioRecordingQualityMedium,
       ),
