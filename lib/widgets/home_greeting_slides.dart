@@ -40,7 +40,7 @@ class _HomeGreetingSlidesState extends State<HomeGreetingSlides> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 240, // Increased height to better accommodate content
+      height: 240,
       width: double.infinity,
       child: Stack(
         alignment: Alignment.bottomCenter,
@@ -55,24 +55,25 @@ class _HomeGreetingSlidesState extends State<HomeGreetingSlides> {
             children: const [
               _GreetingCard(
                 icon: Icons.support_agent,
-                title: 'Welcome to Eavesdrop',
+                title: 'Talk to Someone. For Real.',
                 subtitle:
-                'Your personal AI-powered active listener, ready to help you navigate your thoughts.',
+                'Not an audience. Not an algorithm. Just one human giving you their full attention.',
               ),
               _GreetingCard(
                 icon: Icons.lightbulb_outline,
-                title: 'Gain Clarity & Perspective',
+                title: 'Say the Things You’ve Been Holding In',
                 subtitle:
-                'Talk through your challenges and unlock new insights in a safe, confidential space.',
+                'About love, confusion, loneliness, situationships, or nothing at all. You won’t be judged or rushed.',
               ),
               _GreetingCard(
-                icon: Icons.history, // Changed icon to better reflect "past calls"
-                title: 'Review Your Journey',
+                icon: Icons.history,
+                title: 'Build a Quiet Connection',
                 subtitle:
-                'Revisit your past conversations to track your progress and reflect on your growth.',
+                'Some conversations stay with you. Come back to them. Feel less alone next time.',
                 isCta: true,
               ),
             ],
+
           ),
           Positioned(
             bottom: 10.0,
