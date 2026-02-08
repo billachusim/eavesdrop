@@ -19,19 +19,17 @@ class BookingScreen extends StatefulWidget {
 
 class _BookingScreenState extends State<BookingScreen> {
   final now = DateTime.now();
-  late BookingService mockBookingService;
-  DateTime? _selectedDay;
   final _db = DatabaseService();
+  late BookingService mockBookingService;
 
   @override
   void initState() {
     super.initState();
-    _selectedDay = now;
     mockBookingService = BookingService(
         serviceName: 'Book Hour',
         serviceDuration: 60,
-        bookingEnd: DateTime(now.year, now.month, now.day, 23, 0),
-        bookingStart: DateTime(now.year, now.month, now.day, now.hour, 0));
+        bookingEnd: DateTime(now.year, now.month, now.day, 23, 59),
+        bookingStart: DateTime(now.year, now.month, now.day, 0, 0));
   }
 
   CollectionReference bookings =
@@ -40,31 +38,19 @@ class _BookingScreenState extends State<BookingScreen> {
   List<DateTimeRange> generatePauseSlots() {
     return [
       DateTimeRange(
-          start: DateTime(
-              _selectedDay!.year, _selectedDay!.month, _selectedDay!.day, 13, 0),
-          end: DateTime(
-              _selectedDay!.year, _selectedDay!.month, _selectedDay!.day, 16, 0))
+          start: DateTime(now.year, now.month, now.day, 3, 0),
+          end: DateTime(now.year, now.month, now.day, 4, 0)),
+      DateTimeRange(
+          start: DateTime(now.year, now.month, now.day, 11, 0),
+          end: DateTime(now.year, now.month, now.day, 12, 0)),
+      DateTimeRange(
+          start: DateTime(now.year, now.month, now.day, 19, 0),
+          end: DateTime(now.year, now.month, now.day, 20, 0))
     ];
   }
 
   Stream<dynamic>? getBookingStreamFirebase(
       {required DateTime end, required DateTime start}) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (!DateUtils.isSameDay(_selectedDay, start)) {
-        setState(() {
-          _selectedDay = start;
-          mockBookingService = BookingService(
-              serviceName: 'Book Hour',
-              serviceDuration: 60,
-              bookingEnd:
-                  DateTime(start.year, start.month, start.day, 23, 0),
-              bookingStart: DateUtils.isSameDay(start, now)
-                  ? DateTime(now.year, now.month, now.day, now.hour, 0)
-                  : DateTime(start.year, start.month, start.day, 6, 0));
-        });
-      }
-    });
     return bookings
         .where('bookingStart', isGreaterThanOrEqualTo: start)
         .where('bookingStart', isLessThanOrEqualTo: end)
@@ -163,39 +149,24 @@ class _BookingScreenState extends State<BookingScreen> {
             child: HomeGreetingSlides(),
           ),
           SliverFillRemaining(
-            child: Theme(
-              data: ThemeData.dark().copyWith(
-                colorScheme: const ColorScheme.dark(
-                  primary: Colors.deepPurple,
-                  surface: Colors.black,
-                ),
-                canvasColor: Colors.black,
-                cardColor: Colors.black,
-              ),
-              child: BookingCalendar(
-                key: ValueKey(_selectedDay),
-                bookingService: mockBookingService,
-                convertStreamResultToDateTimeRanges: convertStreamResultFirebase,
-                getBookingStream: getBookingStreamFirebase,
-                uploadBooking: moveToNext,
-                pauseSlots: generatePauseSlots(),
-                pauseSlotText: 'Break',
-                hideBreakTime: false,
-                loadingWidget: const Text('Fetching data...'),
-                uploadingWidget:
-                    const Center(child: CircularProgressIndicator()),
-                startingDayOfWeek: StartingDayOfWeek.sunday,
-                bookingButtonColor: Colors.deepPurple,
-                availableSlotColor: Colors.purple.shade200.withOpacity(0.5),
-                selectedSlotColor: Colors.deepPurple,
-                bookedSlotColor: Colors.grey.shade800,
-                availableSlotTextStyle: const TextStyle(color: Colors.white),
-                selectedSlotTextStyle: const TextStyle(color: Colors.white),
-                bookedSlotTextStyle: const TextStyle(color: Colors.white),
-                wholeDayIsBookedWidget: const Text(
-                  'Sorry, for this day everything is booked',
-                  style: TextStyle(color: Colors.white),
-                ),
+            child: BookingCalendar(
+              bookingService: mockBookingService,
+              convertStreamResultToDateTimeRanges: convertStreamResultFirebase,
+              getBookingStream: getBookingStreamFirebase,
+              uploadBooking: moveToNext,
+              pauseSlots: generatePauseSlots(),
+              pauseSlotText: 'Break',
+              hideBreakTime: false,
+              loadingWidget: const Text('Fetching data...'),
+              uploadingWidget:
+                  const Center(child: CircularProgressIndicator()),
+              startingDayOfWeek: StartingDayOfWeek.sunday,
+              bookingButtonColor: Colors.deepPurple,
+              availableSlotColor: Colors.green,
+              selectedSlotColor: Colors.blue,
+              wholeDayIsBookedWidget: const Text(
+                'Sorry, for this day everything is booked',
+                style: TextStyle(color: Colors.white),
               ),
             ),
           )

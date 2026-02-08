@@ -226,7 +226,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: Text(
-                        'Booking for: ${widget.booking.bookingStart!.toLocal().toString().substring(0, 16)}',
+                        'Booking for: ${widget.booking.bookingStart.toLocal().toString().substring(0, 16)}',
                         style: const TextStyle(color: Colors.white),
                       ),
                     ),
