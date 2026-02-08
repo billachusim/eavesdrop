@@ -26,7 +26,7 @@ class _BookingScreenState extends State<BookingScreen> {
   void initState() {
     super.initState();
     mockBookingService = BookingService(
-        serviceName: 'Book Hour',
+        serviceName: 'Book One Hour',
         serviceDuration: 60,
         bookingEnd: DateTime(now.year, now.month, now.day, 23, 59),
         bookingStart: DateTime(now.year, now.month, now.day, 0, 0));
@@ -94,7 +94,7 @@ class _BookingScreenState extends State<BookingScreen> {
     }
 
     final hosts = hostSnapshot.docs
-        .map((doc) => UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+        .map((doc) => UserModel.fromMap(doc.data(), doc.id))
         .toList();
 
     Navigator.push(

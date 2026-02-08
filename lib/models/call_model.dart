@@ -7,6 +7,7 @@ class CallModel {
   final bool isPrivate;
   final bool isLive;
   final Timestamp startTime;
+  final Timestamp endTime;
   final String channelName;
   final int listeners;
   final String title;
@@ -16,7 +17,6 @@ class CallModel {
   final String? userMood;
   final String? recordingUrl;
   final bool isFeatured;
-  // New fields for call state management
   final String bookingId;
   final bool accepted;
   final bool rejected;
@@ -30,6 +30,7 @@ class CallModel {
     required this.isPrivate,
     required this.isLive,
     required this.startTime,
+    required this.endTime,
     required this.channelName,
     this.listeners = 0,
     required this.title,
@@ -39,7 +40,6 @@ class CallModel {
     this.userMood,
     this.recordingUrl,
     this.isFeatured = false,
-    // Initialize new fields
     required this.bookingId,
     this.accepted = false,
     this.rejected = false,
@@ -55,6 +55,7 @@ class CallModel {
       isPrivate: data['isPrivate'] as bool? ?? false,
       isLive: data['isLive'] as bool? ?? false,
       startTime: data['startTime'] as Timestamp,
+      endTime: data['endTime'] as Timestamp,
       channelName: data['channelName'] as String,
       listeners: data['listeners'] as int? ?? 0,
       title: data['title'] as String? ?? '',
@@ -64,7 +65,6 @@ class CallModel {
       userMood: data['userMood'] as String?,
       recordingUrl: data['recordingUrl'] as String?,
       isFeatured: data['isFeatured'] as bool? ?? false,
-      // Assign new fields from map
       bookingId: data['bookingId'] as String? ?? '',
       accepted: data['accepted'] as bool? ?? false,
       rejected: data['rejected'] as bool? ?? false,
@@ -80,6 +80,7 @@ class CallModel {
       'isPrivate': isPrivate,
       'isLive': isLive,
       'startTime': startTime,
+      'endTime': endTime,
       'channelName': channelName,
       'listeners': listeners,
       'title': title,
@@ -89,7 +90,6 @@ class CallModel {
       'userMood': userMood,
       'recordingUrl': recordingUrl,
       'isFeatured': isFeatured,
-      // Add new fields to map
       'bookingId': bookingId,
       'accepted': accepted,
       'rejected': rejected,

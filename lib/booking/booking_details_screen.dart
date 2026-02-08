@@ -10,6 +10,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import '../models/booking_model.dart';
+import '../models/call_model.dart';
+import '../services/database_service.dart';
 
 class BookingDetailsScreen extends StatefulWidget {
   final BookingService booking;
@@ -74,120 +77,160 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   }
 
   Future<dynamic> saveAndUploadBooking() async {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
-      setState(() {
-        _isLoading = true;
-      });
-      final messenger = ScaffoldMessenger.of(context);
-      final navigator = Navigator.of(context);
-      final user = context.read<User?>();
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    _formKey.currentState!.save();
 
-      if (user == null) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Error: You are not logged in.')),
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final user = context.read<User?>();
+
+    if (user == null) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Error: You are not logged in.')),
+      );
+      return;
+    }
+
+    if (_selectedHost == null) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Error: Please select a personality.')),
+      );
+      return;
+    }
+
+    // --- Show Confirmation Dialog ---
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Booking'),
+          content: const Text(
+              'This will deduct 300 credits from your account. Do you want to proceed?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Confirm'),
+            ),
+          ],
         );
-        setState(() {
-          _isLoading = false;
-        });
-        return;
+      },
+    );
+
+    if (confirmed != true) {
+      return; // User cancelled
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      const int cost = 300;
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final userData = userDoc.data();
+
+      if (userData == null) {
+        throw Exception('User data not found.');
       }
 
-      if (_selectedHost == null) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Error: Please select a personality.')),
-        );
-        setState(() {
-          _isLoading = false;
-        });
-        return;
+      final nickname = userData['displayName'] ?? 'No name';
+      final userEmail = userData['email'] ?? '';
+      final userCredits = userData['credits'] as int? ?? 0;
+
+      if (userCredits < cost) {
+        throw Exception('You do not have enough credits to make this booking.');
       }
 
+      final bookingId = uuid.v1();
+      final channelId = uuid.v4();
       final theBookingStart = widget.booking.bookingStart;
       final theBookingEnd = widget.booking.bookingEnd;
 
-      try {
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-        final nickname = userDoc.data()!['displayName'];
-        final userEmail = userDoc.data()!['email'];
-        final bookingId = uuid.v1();
-        final channelId = uuid.v4();
+      // 1. Create the BookingModel instance
+      final booking = BookingModel(
+        userId: user.uid,
+        nickname: nickname,
+        bookingId: bookingId,
+        isTrial: false,
+        bookingStart: theBookingStart,
+        bookingEnd: theBookingEnd,
+        channelId: channelId,
+        title: _titleController.text,
+        mood: _selectedMood,
+        location: _locationController.text,
+        personalityId: _selectedHost!.uid,
+        personalityAvatar: _selectedHost!.photoURL,
+        isPrivate: _isPrivate,
+      );
 
-        final bookingDocRef =
-            FirebaseFirestore.instance.collection('bookings').doc(bookingId);
-        final callDocRef =
-            FirebaseFirestore.instance.collection('calls').doc(channelId);
+      // 2. Create the CallModel instance
+      final call = CallModel(
+        id: channelId,
+        hostId: _selectedHost!.uid,
+        callerId: user.uid,
+        isPrivate: _isPrivate,
+        isLive: false,
+        startTime: Timestamp.fromDate(theBookingStart),
+        endTime: Timestamp.fromDate(theBookingEnd),
+        channelName: channelId,
+        title: _titleController.text,
+        userNickname: nickname,
+        personalityAvatar: _selectedHost!.photoURL ?? '',
+        userLocation: _locationController.text.isNotEmpty
+            ? _locationController.text
+            : null,
+        userMood: _selectedMood,
+        bookingId: bookingId, // Link to the booking document
+        hasEnded: false,
+        accepted: false,
+        connected: false,
+        rejected: false,
+      );
 
-        await FirebaseFirestore.instance.runTransaction((transaction) async {
-          transaction.set(
-              bookingDocRef,
-              {
-                'userId': user.uid,
-                'nickname': nickname,
-                'bookingId': bookingId,
-                'isTrial': false,
-                'bookingStart': theBookingStart,
-                'bookingEnd': theBookingEnd,
-                'timeOfBooking': FieldValue.serverTimestamp(),
-                'channelId': channelId,
-                'title': _titleController.text,
-                'mood': _selectedMood,
-                'location': _locationController.text,
-                'personalityId': _selectedHost!.uid,
-                'personalityAvatar': _selectedHost!.photoURL,
-                'isPrivate': _isPrivate,
-              },
-              SetOptions(merge: true));
+      // 3. Use the new DatabaseService method
+      await DatabaseService().createBookingAndCall(
+        booking: booking,
+        call: call,
+        cost: cost,
+      );
 
-          transaction.set(
-              callDocRef,
-              {
-                'id': channelId,
-                'hostId': _selectedHost!.uid,
-                'callerId': user.uid,
-                'isPrivate': _isPrivate,
-                'isLive': false,
-                'startTime': Timestamp.fromDate(theBookingStart),
-                'channelName': channelId,
-                'title': _titleController.text,
-                'userNickname': nickname,
-                'personalityAvatar': _selectedHost!.photoURL,
-                'bookingId': bookingId,
-                'accepted': false,
-                'rejected': false,
-                'connected': false,
-                'hasEnded': false,
-              },
-              SetOptions(merge: true));
-        });
+      await Add2Calendar.addEvent2Cal(
+        addToCalendar(
+            userEmail: userEmail,
+            bookingStart: theBookingStart,
+            bookingEnd: theBookingEnd),
+      );
 
-        await Add2Calendar.addEvent2Cal(
-          addToCalendar(
-              userEmail: userEmail.toString(),
-              bookingStart: theBookingStart,
-              bookingEnd: theBookingEnd),
-        );
+      // Persist the bookingId for future reference if needed
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('booking', bookingId);
 
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('booking', bookingId);
-
-        messenger.showSnackBar(
-            const SnackBar(content: Text('Appointment booked successfully!')));
-        navigator.pop();
-        navigator.pop();
-      } catch (e) {
-        if (kDebugMode) {
-          print('Error saving booking: $e');
-        }
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('Error booking appointment: $e'),
-          ),
-        );
-      } finally {
+      messenger.showSnackBar(const SnackBar(
+          content: Text(
+              'Appointment booked successfully! 300 credits have been deducted.')));
+      navigator.pop();
+      navigator.pop();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error saving booking: $e');
+      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+              'Error booking appointment: ${e.toString().replaceFirst("Exception: ", "")}'),
+        ),
+      );
+    } finally {
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });
@@ -222,7 +265,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Card(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha:0.2),
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: Text(
@@ -233,7 +276,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                   ),
                   const SizedBox(height: 16),
                   Card(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha:0.2),
                     child: TextFormField(
                       controller: _titleController,
                       style: const TextStyle(color: Colors.white),
@@ -255,9 +298,9 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                   ),
                   const SizedBox(height: 16),
                   Card(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha:0.2),
                     child: DropdownButtonFormField<String>(
-                      value: _selectedMood,
+                      initialValue: _selectedMood,
                       dropdownColor: Colors.deepPurple,
                       style: const TextStyle(color: Colors.white),
                       decoration: const InputDecoration(
@@ -283,7 +326,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                   ),
                   const SizedBox(height: 16),
                   Card(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha:0.2),
                     child: TextFormField(
                       controller: _locationController,
                       style: const TextStyle(color: Colors.white),
@@ -320,14 +363,14 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                             }
                           });
                         },
-                        backgroundColor: Colors.white.withOpacity(0.2),
+                        backgroundColor: Colors.white.withValues(alpha:0.2),
                         selectedColor: Colors.deepPurple,
                       );
                     }).toList(),
                   ),
                   const SizedBox(height: 16),
                   Card(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha:0.2),
                     child: SwitchListTile(
                       title: const Text('Private Call',
                           style: TextStyle(color: Colors.white)),
@@ -341,7 +384,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                           _isPrivate = value;
                         });
                       },
-                      activeColor: Colors.deepPurple,
+                      activeThumbColor: Colors.deepPurple,
                     ),
                   ),
                   const SizedBox(height: 32),

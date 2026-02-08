@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:eavesdrop/models/booking_model.dart';
 import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/models/user_model.dart';
 
@@ -23,14 +24,53 @@ class DatabaseService {
         .map((snap) => UserModel.fromMap(snap.data()!, snap.id));
   }
 
-  // Book a new call
+  // Book a new call (Kept for other potential uses)
   Future<void> bookCall(CallModel call, int cost) async {
     try {
-      DocumentReference docRef = await _db.collection('calls').add(call.toMap());
-      await docRef.update({'channelName': docRef.id, 'hasEnded': false});
-      await updateUserCredits(call.hostId, -cost);
+      final callDocRef = _db.collection('calls').doc(call.id);
+      final userDocRef = _db.collection('users').doc(call.callerId);
+
+      await _db.runTransaction((transaction) async {
+        // Create the new call document
+        transaction.set(callDocRef, call.toMap());
+
+        // Deduct the cost from the user's credits
+        transaction.update(userDocRef, {
+          'credits': FieldValue.increment(-cost),
+        });
+      });
     } catch (e) {
+      // It's better to re-throw the error to be handled by the UI
       // print(e.toString());
+      rethrow;
+    }
+  }
+
+  // Create a new booking and its corresponding call document
+  Future<void> createBookingAndCall(
+      {required BookingModel booking,
+        required CallModel call,
+        required int cost}) async {
+    try {
+      final bookingDocRef = _db.collection('bookings').doc(booking.bookingId);
+      final callDocRef = _db.collection('calls').doc(call.id);
+      final userDocRef = _db.collection('users').doc(call.callerId);
+
+      await _db.runTransaction((transaction) async {
+        // 1. Create the booking document
+        transaction.set(bookingDocRef, booking.toMap());
+
+        // 2. Create the call document
+        transaction.set(callDocRef, call.toMap());
+
+        // 3. Deduct the cost from the user's credits
+        transaction.update(userDocRef, {
+          'credits': FieldValue.increment(-cost),
+        });
+      });
+    } catch (e) {
+      // Re-throw the error to be handled by the UI
+      rethrow;
     }
   }
 
@@ -50,7 +90,8 @@ class DatabaseService {
     try {
       await _db.collection('users').doc(uid).update({
         'isPremium': true,
-        'premiumExpiryDate': Timestamp.fromDate(DateTime.now().add(const Duration(days: 30))),
+        'premiumExpiryDate':
+        Timestamp.fromDate(DateTime.now().add(const Duration(days: 30))),
       });
     } catch (e) {
       // print(e.toString());
@@ -64,16 +105,13 @@ class DatabaseService {
         .where('callerId', isEqualTo: uid)
         .snapshots()
         .map((snap) =>
-            snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
+        snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
   }
 
   // Get all calls for the admin dashboard
   Stream<List<CallModel>> streamAllCalls() {
-    return _db
-        .collection('calls')
-        .snapshots()
-        .map((snap) =>
-            snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
+    return _db.collection('calls').snapshots().map((snap) =>
+        snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
   }
 
   // Get all live calls
@@ -84,7 +122,7 @@ class DatabaseService {
         .where('isFeatured', isEqualTo: true)
         .snapshots()
         .map((snap) =>
-            snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
+        snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
   }
 
   // Get all upcoming calls
@@ -122,7 +160,6 @@ class DatabaseService {
         .map((snap) =>
         snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
   }
-
 
   // Save user FCM token
   Future<void> saveUserToken(String uid, String token) async {
@@ -162,12 +199,17 @@ class DatabaseService {
   // Set a reminder for a call
   Future<void> setReminder(String callId, String userId) async {
     try {
-      await _db.collection('calls').doc(callId).collection('reminders').doc(userId).set({});
+      await _db
+          .collection('calls')
+          .doc(callId)
+          .collection('reminders')
+          .doc(userId)
+          .set({});
     } catch (e) {
       // print(e.toString());
     }
   }
-  
+
   // End a call
   Future<void> endCall(String callId) async {
     try {

@@ -77,7 +77,7 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
                 widget.call.title,
-                style: textTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold),
+                style: textTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold, color: Colors.white),
                 textAlign: TextAlign.center,
               ),
               centerTitle: true,
@@ -171,7 +171,7 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
             padding: const EdgeInsets.only(top: 12.0),
             child: Chip(
               avatar: const Icon(Icons.sentiment_satisfied_alt),
-              label: Text('Feeling: ${widget.call.userMood!}'),
+              label: Text('Mood: ${widget.call.userMood!}'),
               backgroundColor: const Color(0xFF2D2D2D),
             ),
           ),
@@ -181,7 +181,7 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
             padding: const EdgeInsets.only(top: 8.0),
             child: Chip(
               avatar: const Icon(Icons.location_on_outlined),
-              label: Text('From: ${widget.call.userLocation!}'),
+              label: Text('Location: ${widget.call.userLocation!}'),
               backgroundColor: const Color(0xFF2D2D2D),
             ),
           ),
