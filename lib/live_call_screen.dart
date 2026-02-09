@@ -5,6 +5,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:eavesdrop/auth/onboarding_screen.dart';
 import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/models/user_model.dart';
+import 'package:eavesdrop/paywall_overlay.dart';
 import 'package:eavesdrop/services/agora_service.dart';
 import 'package:eavesdrop/services/database_service.dart';
 import 'package:eavesdrop/services/storage_service.dart';
@@ -29,12 +30,12 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   final AgoraService _agoraService = AgoraService();
   final StorageService _storageService = StorageService();
   bool _showAuthWall = false;
+  bool _showPaywall = false;
   bool _isMuted = false;
   bool _isBroadcaster = false;
   bool _isProcessingEnd = false;
 
-  // A list to hold questions sent during the call
-  final List<Map<String, String>> _questions = [];
+
 
   @override
   void initState() {
@@ -43,37 +44,52 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   }
 
   Future<void> _initialize() async {
+    // Capture context-dependent objects before the async gap.
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
     try {
       await initializeAgora();
-      final user = Provider.of<User?>(context, listen: false);
-      // Show auth wall after 60 seconds if user is a guest
-      if (mounted && user == null) {
+
+      // Use a mounted check before interacting with the widget's state or context.
+      if (mounted) {
+        // Show auth wall or paywall after 60 seconds
         Future.delayed(const Duration(seconds: 60), () {
           if (mounted) {
-            setState(() {
-              _showAuthWall = true;
-              _agoraService.muteAllRemoteAudioStreams(true);
-            });
+            final currentUser = Provider.of<User?>(context, listen: false);
+            if (currentUser == null) {
+              // For guest users, show the Auth Wall
+              setState(() {
+                _showAuthWall = true;
+                _agoraService.muteAllRemoteAudioStreams(true);
+              });
+            } else if (!_isBroadcaster) {
+              // For signed-in, non-host users, show the Paywall
+              setState(() {
+                _showPaywall = true;
+                _agoraService.muteAllRemoteAudioStreams(true);
+              });
+            }
           }
         });
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(content: Text('Failed to join call: ${e.toString()}')),
         );
-        Navigator.of(context).pop();
+        if (navigator.canPop()) {
+          navigator.pop();
+        }
       }
     }
   }
 
+
   Future<void> initializeAgora() async {
     final user = Provider.of<User?>(context, listen: false);
     if (user == null) {
-      // Guest logic: Initialize and join as audience
       await _agoraService.initialize();
-      // Guests don't need a token for audience role usually, but if your setup requires it, handle that here.
-      // For simplicity, we assume guests can listen without a specific token.
       await _agoraService.joinChannel('', widget.call.channelName, 0, ClientRoleType.clientRoleAudience);
       return;
     }
@@ -109,6 +125,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
     await _agoraService.joinChannel(
         token, widget.call.channelName, user.uid.hashCode, role);
+    await _db.joinCallListeners(widget.call.id, userModel.uid, userModel.photoURL.toString());
 
     if (isBroadcaster) {
       await _agoraService.startRecording();
@@ -117,10 +134,16 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
   @override
   void dispose() {
+    // Leave the listener list when the screen is disposed
+    final user = Provider.of<User?>(context, listen: false);
+    if (user != null) {
+      _db.leaveCallListeners(widget.call.id, user.uid);
+    }
     // IMPORTANT: Dispose the Agora service to release the engine.
     _agoraService.dispose();
     super.dispose();
   }
+
 
   Future<void> _stopRecordingAndUpload() async {
     if (!_isBroadcaster) return;
@@ -201,50 +224,52 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     }
   }
 
-  void _handleSendQuestion(UserModel currentUser) async {
-    if (currentUser.credits < 100) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Not enough credits. You need 100 to ask a question.')),
-      );
-      return;
-    }
 
-    final questionController = TextEditingController();
-    final question = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Ask a Question (100 Credits)'),
-        content: TextField(
-          controller: questionController,
-          decoration: const InputDecoration(hintText: 'Type your question here...'),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(questionController.text),
-            child: const Text('Send'),
-          ),
-        ],
-      ),
+  void _handleSendQuestion(UserModel currentUser) async {if (currentUser.credits < 20) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Not enough credits. You need 20 to ask a question.')),
     );
+    return;
+  }
 
-    if (question != null && question.isNotEmpty) {
-      // Deduct credits and add question to the list
-      await _db.updateUserCredits(currentUser.uid, -100);
-      setState(() {
-        _questions.add({
-          'name': ?currentUser.displayName,
-          'question': question,
-        });
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Question sent!')),
-        );
-      }
+  final questionController = TextEditingController();
+  final question = await showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Ask a Question (20 Credits)'),
+      content: TextField(
+        controller: questionController,
+        decoration: const InputDecoration(hintText: 'Type your question here...'),
+        autofocus: true,
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(questionController.text),
+          child: const Text('Send'),
+        ),
+      ],
+    ),
+  );
+
+  if (question != null && question.isNotEmpty) {
+    await _db.updateUserCredits(currentUser.uid, -20);
+    // Save question to the database
+    await _db.addQuestionToCall(widget.call.id, {
+      'userId': currentUser.uid,
+      'name': currentUser.displayName,
+      'photoURL': currentUser.photoURL,
+      'question': question,
+      'timestamp': DateTime.now(),
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Question sent!')),
+      );
     }
   }
+  }
+
 
 
   @override
@@ -255,119 +280,184 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     return user != null
         ? StreamBuilder<UserModel>(
       stream: _db.streamUser(user.uid),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+      builder: (context, userSnapshot) {
+        if (!userSnapshot.hasData) {
           return const Scaffold(
             backgroundColor: Color(0xFF0B0B0B),
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        final userModel = snapshot.data!;
+        final userModel = userSnapshot.data!;
         final isHost = userModel.uid == widget.call.hostId;
         final isPrivilegedUser =
             isHost || userModel.isAdmin || userModel.isSuperAdmin;
 
-        return Scaffold(
-          backgroundColor: const Color(0xFF0B0B0B),
-          body: Stack(
-            children: [
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: DefaultTextStyle(
-                    style: textTheme.bodyMedium!
-                        .copyWith(color: Colors.white),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 12),
-                        _topBar(context, isPrivilegedUser),
-                        const SizedBox(height: 30),
-                        Text(
-                          widget.call.title,
-                          textAlign: TextAlign.center,
-                          style: textTheme.titleLarge!.copyWith(
-                            fontWeight: FontWeight.w700,
-                            height: 1.4,
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-                        // New: Conditionally show questions or speakers
-                        if (_questions.isNotEmpty)
-                          _questionsList()
-                        else
-                          Expanded(
-                            child: Center(
-                              child: Row(
-                                mainAxisAlignment:
-                                MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  SpeakerAvatar(
-                                    name: widget.call.userNickname,
-                                    image: "https://i.pravatar.cc/300?img=5",
-                                    isSpeaking: true,
-                                  ),
-                                  SpeakerAvatar(
-                                    name: widget.call.userNickname,
-                                    image: "https://i.pravatar.cc/300?img=47",
-                                    isSpeaking: false,
-                                  ),
-                                ],
+        // NEW: StreamBuilder to listen for call state changes
+        return StreamBuilder<CallModel?>(
+          stream: _db.streamCall(widget.call.id),
+          builder: (context, callSnapshot) {
+            if (!callSnapshot.hasData) {
+              return const Scaffold(
+                backgroundColor: Color(0xFF0B0B0B),
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            final call = callSnapshot.data!;
+            // If call has ended, pop the screen
+            if (call.hasEnded) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (Navigator.of(context).canPop()) {
+                  Navigator.of(context).pop();
+                }
+              });
+            }
+
+            return Scaffold(
+              backgroundColor: const Color(0xFF0B0B0B),
+              body: Stack(
+                children: [
+                  SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: DefaultTextStyle(
+                        style: textTheme.bodyMedium!
+                            .copyWith(color: Colors.white),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 12),
+                            // Pass the listener count from the stream
+                            _topBar(context, isPrivilegedUser),
+                            const SizedBox(height: 30),
+                            Text(
+                              call.title, // Use title from stream
+                              textAlign: TextAlign.center,
+                              style: textTheme.titleLarge!.copyWith(
+                                fontWeight: FontWeight.w700,
+                                height: 1.4,
                               ),
                             ),
-                          ),
-                        _listenerStrip(),
-                        const SizedBox(height: 20),
-                        _bottomControls(context, userModel),
-                        const SizedBox(height: 20),
-                      ],
+                            const SizedBox(height: 30),
+                            Expanded(
+                              child: Center(
+                                child: Row(
+                                  mainAxisAlignment:
+                                  MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    SpeakerAvatar(
+                                      name: widget.call.hostName,
+                                      image: widget.call.personalityAvatar,
+                                      isSpeaking: true,
+                                    ),
+                                    SpeakerAvatar(
+                                      name: widget.call.userNickname,
+                                      image: widget.call.userPhotoURL,
+                                      isSpeaking: false,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            // Show questions list only for admin/host
+                            if (isPrivilegedUser)
+                              _questionsList(),
+                            const SizedBox(height: 20),
+                            _listenerStrip(),
+                            const SizedBox(height: 20),
+                            _bottomControls(context, userModel),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  if (_showAuthWall) const OnboardingScreen(),
+                  if (_showPaywall)
+                    PaywallOverlay(
+                      user: userModel,
+                      onUnlock: () {
+                        setState(() {
+                          _showPaywall = false;
+                          _agoraService.muteAllRemoteAudioStreams(false);
+                        });
+                      },
+                    ),
+                  if (_isProcessingEnd)
+                    Container(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      child: const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 16),
+                            Text("Ending Call...",
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 16)),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              if (_showAuthWall) const OnboardingScreen(),
-              // New: Loading indicator for ending call
-              if (_isProcessingEnd)
-                Container(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  child: const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text("Ending Call...", style: TextStyle(color: Colors.white, fontSize: 16)),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
+            );
+          },
         );
       },
     )
-        : const OnboardingScreen(); // Or a guest view
+        : const OnboardingScreen();
   }
 
-  // New: Widget to display the list of questions
   Widget _questionsList() {
+    // Only show if user is a broadcaster (admin/host)
+    //if (!_isBroadcaster) return const SizedBox.shrink();
+
     return Expanded(
-      child: ListView.builder(
-        itemCount: _questions.length,
-        itemBuilder: (context, index) {
-          final item = _questions[index];
-          return Card(
-            color: Colors.grey[850],
-            margin: const EdgeInsets.symmetric(vertical: 8.0),
-            child: ListTile(
-              title: Text(item['question']!, style: const TextStyle(color: Colors.white)),
-              subtitle: Text('- ${item['name']}', style: const TextStyle(color: Colors.white70)),
-            ),
+      child: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _db.streamCallQuestions(widget.call.id),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            // Show a placeholder when there are no questions
+            return const Center(
+              child: Text(
+                'Questions from users will appear here.',
+                style: TextStyle(color: Colors.white54),
+              ),
+            );
+          }
+          final questions = snapshot.data!;
+          return ListView.builder(
+            itemCount: questions.length,
+            itemBuilder: (context, index) {
+              final item = questions[index];
+              return Card(
+                color: Colors.grey[850]!.withValues(alpha: 0.8),
+                margin: const EdgeInsets.symmetric(vertical: 8.0),
+                child: ListTile(
+                  // Added leading CircleAvatar for user's photo
+                  leading: CircleAvatar(
+                    backgroundImage: item['photoURL'] != null
+                        ? NetworkImage(item['photoURL'])
+                        : null,
+                    child: item['photoURL'] == null
+                        ? const Icon(Icons.person)
+                        : null,
+                  ),
+                  title: Text(item['question']!, style: const TextStyle(color: Colors.white)),
+                  subtitle: Text('- ${item['name']}', style: const TextStyle(color: Colors.white70)),
+                ),
+              );
+            },
           );
         },
       ),
     );
   }
+
 
   Widget _topBar(BuildContext context, bool isPrivilegedUser) {
     return Row(
@@ -390,45 +480,107 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
         const Icon(Icons.people_alt_outlined,
             size: 18, color: Colors.white70),
         const SizedBox(width: 4),
-        Text("${widget.call.listeners} listening",
-            style: const TextStyle(color: Colors.white70)),
+        StreamBuilder<CallModel?>(
+            stream: _db.streamCall(widget.call.id),
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                return Text("${snapshot.data!.listeners} listening",
+                    style: const TextStyle(color: Colors.white70));
+              }
+              return const Text("...",
+                  style: TextStyle(color: Colors.white70));
+            }),
         const Spacer(),
-        IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => _leaveChannel(endCall: isPrivilegedUser),
-        )
+          IconButton(
+            onPressed: (){},
+            icon: const Icon(Icons.stop_circle_outlined,
+                color: Colors.redAccent),
+            tooltip: 'Recording',
+          )
       ],
     );
   }
 
   Widget _listenerStrip() {
-    return Column(
-      children: [
-        const SizedBox(height: 10),
-        SizedBox(
-          height: 40,
-          child: Stack(
+    return SizedBox(
+      height: 40,
+      child: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _db.streamCallListeners(widget.call.id),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const SizedBox.shrink(); // Or a placeholder
+          }
+          final listeners = snapshot.data!;
+          return Stack(
+            alignment: Alignment.centerLeft,
             children: List.generate(
-              8,
-                  (index) => Positioned(
-                left: index * 22.0,
-                child: CircleAvatar(
-                  radius: 16,
-                  backgroundImage: NetworkImage(
-                      "https://i.pravatar.cc/150?img=${index + 10}"),
-                ),
-              ),
+              listeners.length > 5 ? 5 : listeners.length, // Show max 5
+                  (index) {
+                final listener = listeners[index];
+                final photoURL = listener['photoURL'] as String?;
+                return Positioned(
+                  left: index * 25.0,
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundImage: photoURL != null && photoURL.isNotEmpty
+                        ? NetworkImage(photoURL)
+                        : null,
+                    // Fallback for missing or empty URL
+                    child: (photoURL == null || photoURL.isEmpty)
+                        ? const Icon(Icons.person, size: 18)
+                        : null,
+                  ),
+                );
+              },
             ),
-          ),
+          );
+        },
+      ),
+    );
+  }
+
+
+  Widget _interactionControls(BuildContext context, UserModel userModel) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        FloatingActionButton(
+          heroTag: 'reactions_btn',
+          onPressed: () {},
+          backgroundColor: const Color(0xFF2B2B2B),
+          child: const Text("😂", style: TextStyle(fontSize: 24)),
         ),
-        const SizedBox(height: 6),
-        const Text(
-          "This conversation is being broadcast.",
-          style: TextStyle(color: Colors.white54, fontSize: 12),
+        if (_isBroadcaster)
+          FloatingActionButton(
+            heroTag: 'mute_btn',
+            onPressed: () {
+              setState(() {
+                _isMuted = !_isMuted;
+                _agoraService.muteLocalAudioStream(_isMuted);
+              });
+            },
+            backgroundColor:
+            _isMuted ? Colors.red : const Color(0xFF2B2B2B),
+            child: Icon(_isMuted ? Icons.mic_off : Icons.mic),
+          ),
+        if (!_isBroadcaster) // Only show for non-broadcasters
+          FloatingActionButton(
+            heroTag: 'question_btn',
+            onPressed: () => _handleSendQuestion(userModel),
+            backgroundColor: const Color(0xFF2B2B2B),
+            child: const Icon(Icons.question_answer_outlined),
+          ),
+        FloatingActionButton(
+          heroTag: 'share_btn',
+          onPressed: () {},
+          backgroundColor: const Color(0xFF2B2B2B),
+          child: const Icon(Icons.share_outlined),
         ),
       ],
     );
   }
+
+
 
   Widget _bottomControls(BuildContext context, UserModel user) {
     final bool isHost = user.uid == widget.call.hostId;
@@ -438,6 +590,11 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
     return Column(
       children: [
+
+        _interactionControls(context, user),
+
+        const SizedBox(height: 12),
+
         if (_isBroadcaster)
           ElevatedButton.icon(
             onPressed: () {
@@ -456,25 +613,15 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
-          )
-        else
-          ElevatedButton.icon(
-            onPressed: () => _handleSendQuestion(user),
-            icon: const Icon(Icons.question_answer_outlined),
-            label: const Text("Send a Question (100 Credits)"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1C1C1C),
-              foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 54),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
           ),
         const SizedBox(height: 12),
         if (isPrivilegedUser) ...[
           ElevatedButton(
-            onPressed: () => _leaveChannel(endCall: true),
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              await _leaveChannel(endCall: true);
+              navigator.pop();
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
@@ -492,16 +639,23 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
         ],
         if (canLeaveQuietly)
           ElevatedButton(
-            onPressed: () => _leaveChannel(),
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              await _leaveChannel();
+              navigator.pop();
+            },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1C1C1C),
-              foregroundColor: Colors.white,
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
               minimumSize: const Size(double.infinity, 54),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
-            child: const Text('Leave Quietly'),
+            child: const Text(
+              "Leave Quietly",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
       ],
     );
@@ -509,8 +663,6 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 }
 
 
-// NOTE: SpeakerAvatar widget is not defined in this file. Assuming it exists elsewhere.
-// You might need to add this if it's not defined.
 class SpeakerAvatar extends StatelessWidget {
   final String name;
   final String image;
@@ -525,21 +677,23 @@ class SpeakerAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AvatarGlow(
-      glowColor: Colors.blue,
-      glowRadiusFactor: 60.0,
-      duration: const Duration(milliseconds: 2000),
-      repeat: true,
-      glowCount: 2,
-      animate: isSpeaking,
-      child: Material(
-        elevation: 8.0,
-        shape: const CircleBorder(),
-        child: CircleAvatar(
-          backgroundImage: NetworkImage(image),
-          radius: 40.0,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AvatarGlow(
+          glowRadiusFactor: 50.0,
+          animate: isSpeaking,
+          glowColor: Colors.white,
+          child: CircleAvatar(
+            radius: 40,
+            backgroundImage: NetworkImage(image),
+          ),
         ),
-      ),
+        const SizedBox(height: 8),
+        Text(name,
+            style: const TextStyle(
+                fontWeight: FontWeight.w600, color: Colors.white)),
+      ],
     );
   }
 }

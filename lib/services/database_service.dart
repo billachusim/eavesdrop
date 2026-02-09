@@ -185,6 +185,93 @@ class DatabaseService {
     return null;
   }
 
+
+  // Add a user to the listeners subcollection for a call and increment count
+  Future<void> joinCallListeners(String callId, String userId, String photoURL) async {
+    try {
+      final callRef = _db.collection('calls').doc(callId);
+      final listenerRef = callRef.collection('listeners').doc(userId);
+
+      await _db.runTransaction((transaction) async {
+        // Add user to subcollection
+        transaction.set(listenerRef, {'photoURL': photoURL});
+        // Increment listener count on main call document
+        transaction.update(callRef, {'listeners': FieldValue.increment(1)});
+      });
+    } catch (e) {
+      // print(e.toString());
+    }
+  }
+
+  // Remove a user from the listeners subcollection for a call and decrement count
+  Future<void> leaveCallListeners(String callId, String userId) async {
+    try {
+      final callRef = _db.collection('calls').doc(callId);
+      final listenerRef = callRef.collection('listeners').doc(userId);
+
+      await _db.runTransaction((transaction) async {
+        // Remove user from subcollection
+        transaction.delete(listenerRef);
+        // Decrement listener count on main call document
+        transaction.update(callRef, {'listeners': FieldValue.increment(-1)});
+      });
+    } catch (e) {
+      // print(e.toString());
+    }
+  }
+
+
+  // Stream the listeners for a specific call
+  Stream<List<Map<String, dynamic>>> streamCallListeners(String callId) {
+    return _db
+        .collection('calls')
+        .doc(callId)
+        .collection('listeners')
+        .snapshots()
+        .map((snapshot) =>
+        snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList());
+  }
+
+
+
+  // Stream a single call document by its ID
+  Stream<CallModel?> streamCall(String callId) {
+    return _db.collection('calls').doc(callId).snapshots().map((snap) {
+      if (snap.exists) {
+        return CallModel.fromMap(snap.data()!, snap.id);
+      }
+      return null;
+    });
+  }
+
+  // Add a question to a call's subcollection
+  Future<void> addQuestionToCall(
+      String callId, Map<String, dynamic> questionData) async {
+    try {
+      await _db
+          .collection('calls')
+          .doc(callId)
+          .collection('questions')
+          .add(questionData);
+    } catch (e) {
+      // print(e.toString());
+      rethrow;
+    }
+  }
+
+  // Stream the questions for a specific call
+  Stream<List<Map<String, dynamic>>> streamCallQuestions(String callId) {
+    return _db
+        .collection('calls')
+        .doc(callId)
+        .collection('questions')
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList());
+  }
+
+
+
   // Update call recording URL
   Future<void> updateCallRecordingUrl(String callId, String recordingUrl) async {
     try {

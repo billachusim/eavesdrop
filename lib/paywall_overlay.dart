@@ -15,7 +15,7 @@ class PaywallOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = GoogleFonts.interTextTheme();
     final db = DatabaseService();
-    const cost = 5;
+    const cost = 50;
 
     return BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
@@ -54,7 +54,7 @@ class PaywallOverlay extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    "8,241 people are still listening",
+                    "1,241 people are still listening",
                     style: TextStyle(
                       color: Colors.greenAccent,
                       fontWeight: FontWeight.w600,
@@ -71,7 +71,8 @@ class PaywallOverlay extends StatelessWidget {
                         } else {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const CreditsScreen()),
+                            MaterialPageRoute(
+                                builder: (context) => const CreditsScreen()),
                           );
                         }
                       },
@@ -87,6 +88,20 @@ class PaywallOverlay extends StatelessWidget {
                         "Unlock Room — $cost Credits",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const CreditsScreen()),
+                      );
+                    },
+                    child: const Text(
+                      "Top up credits",
+                      style: TextStyle(color: Colors.white70),
                     ),
                   ),
                   const SizedBox(height: 10),

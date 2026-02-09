@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class CallModel {
   final String id;
   final String hostId;
+  final String hostName;
   final String callerId;
   final bool isPrivate;
   final bool isLive;
@@ -12,6 +13,7 @@ class CallModel {
   final int listeners;
   final String title;
   final String userNickname;
+  final String userPhotoURL;
   final String personalityAvatar;
   final String? userLocation;
   final String? userMood;
@@ -26,6 +28,7 @@ class CallModel {
   CallModel({
     required this.id,
     required this.hostId,
+    required this.hostName,
     required this.callerId,
     required this.isPrivate,
     required this.isLive,
@@ -35,6 +38,7 @@ class CallModel {
     this.listeners = 0,
     required this.title,
     required this.userNickname,
+    required this.userPhotoURL,
     required this.personalityAvatar,
     this.userLocation,
     this.userMood,
@@ -51,6 +55,7 @@ class CallModel {
     return CallModel(
       id: documentId,
       hostId: data['hostId'] as String,
+      hostName: data['hostName'] as String,
       callerId: data['callerId'] as String,
       isPrivate: data['isPrivate'] as bool? ?? false,
       isLive: data['isLive'] as bool? ?? false,
@@ -60,6 +65,7 @@ class CallModel {
       listeners: data['listeners'] as int? ?? 0,
       title: data['title'] as String? ?? '',
       userNickname: data['userNickname'] as String? ?? '',
+      userPhotoURL: data['userPhotoURL'] as String? ?? '',
       personalityAvatar: data['personalityAvatar'] as String? ?? '',
       userLocation: data['userLocation'] as String?,
       userMood: data['userMood'] as String?,
@@ -76,6 +82,7 @@ class CallModel {
   Map<String, dynamic> toMap() {
     return {
       'hostId': hostId,
+      'hostName': hostName,
       'callerId': callerId,
       'isPrivate': isPrivate,
       'isLive': isLive,
@@ -85,6 +92,7 @@ class CallModel {
       'listeners': listeners,
       'title': title,
       'userNickname': userNickname,
+      'userPhotoURL': userPhotoURL,
       'personalityAvatar': personalityAvatar,
       'userLocation': userLocation,
       'userMood': userMood,

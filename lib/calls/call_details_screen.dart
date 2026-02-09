@@ -30,7 +30,8 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.call.recordingUrl != null && widget.call.recordingUrl!.isNotEmpty) {
+    if (widget.call.recordingUrl != null &&
+        widget.call.recordingUrl!.isNotEmpty) {
       _initAudioPlayer();
       if (widget.autoplay) {
         _audioPlayer.play(UrlSource(widget.call.recordingUrl!));
@@ -77,7 +78,8 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
                 widget.call.title,
-                style: textTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold, color: Colors.white),
+                style: textTheme.titleLarge!
+                    .copyWith(fontWeight: FontWeight.bold, color: Colors.white),
                 textAlign: TextAlign.center,
               ),
               centerTitle: true,
@@ -144,7 +146,59 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
+        const SizedBox(height: 20),
+        // Host Info
+        Row(
+          children: [
+            const CircleAvatar(
+              radius: 20,
+              backgroundImage: NetworkImage(
+                  'https://firebasestorage.googleapis.com/v0/b/clair-52652/o/ClaireVartar%2Fclaire_icon.png?alt=media&token=5e14455d-0402-453d-80d0-63b55890f691'),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ms. Claire',
+                  style: textTheme.bodyLarge!
+                      .copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  'Host',
+                  style: textTheme.bodyMedium!.copyWith(color: Colors.white70),
+                ),
+              ],
+            ),
+          ],
+        ),
         const SizedBox(height: 12),
+        // Co-host Info
+        Row(
+          children: [
+            const CircleAvatar(
+              radius: 20,
+              backgroundImage: NetworkImage("https://firebasestorage.googleapis.com/v0/b/clair-52652/o/ClaireVartar%2Ficons8-strawberry-72.png?alt=media&token=ff64370f-939c-46ce-af5e-d220a625ef51"),
+              child: Icon(Icons.person, color: Colors.white70),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Mr. Bill',
+                  style: textTheme.bodyLarge!
+                      .copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  'Co-host',
+                  style: textTheme.bodyMedium!.copyWith(color: Colors.white70),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
         Row(
           children: [
             const Icon(Icons.calendar_today, color: Colors.white70, size: 16),

@@ -143,6 +143,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       }
 
       final nickname = userData['displayName'] ?? 'No name';
+      final photoURL = userData['photoURL'] ?? '';
       final userEmail = userData['email'] ?? '';
       final userCredits = userData['credits'] as int? ?? 0;
 
@@ -176,6 +177,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       final call = CallModel(
         id: channelId,
         hostId: _selectedHost!.uid,
+        hostName: _selectedHost!.displayName ?? 'No name',
         callerId: user.uid,
         isPrivate: _isPrivate,
         isLive: false,
@@ -184,12 +186,13 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
         channelName: channelId,
         title: _titleController.text,
         userNickname: nickname,
+        userPhotoURL: photoURL,
         personalityAvatar: _selectedHost!.photoURL ?? '',
         userLocation: _locationController.text.isNotEmpty
             ? _locationController.text
             : null,
         userMood: _selectedMood,
-        bookingId: bookingId, // Link to the booking document
+        bookingId: bookingId,
         hasEnded: false,
         accepted: false,
         connected: false,
