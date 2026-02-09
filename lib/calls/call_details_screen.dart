@@ -22,6 +22,7 @@ class CallDetailsScreen extends StatefulWidget {
 }
 
 class _CallDetailsScreenState extends State<CallDetailsScreen> {
+  final DatabaseService _db = DatabaseService();
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isPlaying = false;
   Duration _duration = Duration.zero;
@@ -198,6 +199,18 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
             ),
           ],
         ),
+        const SizedBox(height: 15),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Eaves: ',
+              style: textTheme.bodyLarge!
+                  .copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 40, child: _listenerStrip()),
+          ],
+        ),
         const SizedBox(height: 20),
         Row(
           children: [
@@ -333,4 +346,44 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
           ],
         ));
   }
+
+  Widget _listenerStrip() {
+    return SizedBox(
+      height: 40,
+      width: 100,
+      child: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _db.streamCallListeners(widget.call.id),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const SizedBox.shrink(); // Or a placeholder
+          }
+          final listeners = snapshot.data!;
+          return Stack(
+            alignment: Alignment.centerLeft,
+            children: List.generate(
+              listeners.length > 10 ? 10 : listeners.length, // Show max 5
+                  (index) {
+                final listener = listeners[index];
+                final photoURL = listener['photoURL'] as String?;
+                return Positioned(
+                  left: index * 25.0,
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundImage: photoURL != null && photoURL.isNotEmpty
+                        ? NetworkImage(photoURL)
+                        : null,
+                    // Fallback for missing or empty URL
+                    child: (photoURL == null || photoURL.isEmpty)
+                        ? const Icon(Icons.person, size: 18)
+                        : null,
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
 }

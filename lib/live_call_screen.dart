@@ -44,52 +44,37 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   }
 
   Future<void> _initialize() async {
-    // Capture context-dependent objects before the async gap.
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
-
     try {
       await initializeAgora();
-
-      // Use a mounted check before interacting with the widget's state or context.
-      if (mounted) {
-        // Show auth wall or paywall after 60 seconds
+      final user = Provider.of<User?>(context, listen: false);
+      // Show auth wall after 60 seconds if user is a guest
+      if (mounted && user == null) {
         Future.delayed(const Duration(seconds: 60), () {
           if (mounted) {
-            final currentUser = Provider.of<User?>(context, listen: false);
-            if (currentUser == null) {
-              // For guest users, show the Auth Wall
-              setState(() {
-                _showAuthWall = true;
-                _agoraService.muteAllRemoteAudioStreams(true);
-              });
-            } else if (!_isBroadcaster) {
-              // For signed-in, non-host users, show the Paywall
-              setState(() {
-                _showPaywall = true;
-                _agoraService.muteAllRemoteAudioStreams(true);
-              });
-            }
+            setState(() {
+              _showAuthWall = true;
+              _agoraService.muteAllRemoteAudioStreams(true);
+            });
           }
         });
       }
     } catch (e) {
       if (mounted) {
-        scaffoldMessenger.showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to join call: ${e.toString()}')),
         );
-        if (navigator.canPop()) {
-          navigator.pop();
-        }
+        Navigator.of(context).pop();
       }
     }
   }
 
-
   Future<void> initializeAgora() async {
     final user = Provider.of<User?>(context, listen: false);
     if (user == null) {
+      // Guest logic: Initialize and join as audience
       await _agoraService.initialize();
+      // Guests don't need a token for audience role usually, but if your setup requires it, handle that here.
+      // For simplicity, we assume guests can listen without a specific token.
       await _agoraService.joinChannel('', widget.call.channelName, 0, ClientRoleType.clientRoleAudience);
       return;
     }
@@ -125,7 +110,6 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
     await _agoraService.joinChannel(
         token, widget.call.channelName, user.uid.hashCode, role);
-    await _db.joinCallListeners(widget.call.id, userModel.uid, userModel.photoURL.toString());
 
     if (isBroadcaster) {
       await _agoraService.startRecording();
@@ -134,16 +118,10 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
   @override
   void dispose() {
-    // Leave the listener list when the screen is disposed
-    final user = Provider.of<User?>(context, listen: false);
-    if (user != null) {
-      _db.leaveCallListeners(widget.call.id, user.uid);
-    }
     // IMPORTANT: Dispose the Agora service to release the engine.
     _agoraService.dispose();
     super.dispose();
   }
-
 
   Future<void> _stopRecordingAndUpload() async {
     if (!_isBroadcaster) return;
@@ -406,7 +384,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
         );
       },
     )
-        : const OnboardingScreen();
+        : const OnboardingScreen(); // Or a guest view
   }
 
   Widget _questionsList() {
@@ -458,7 +436,6 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     );
   }
 
-
   Widget _topBar(BuildContext context, bool isPrivilegedUser) {
     return Row(
       children: [
@@ -491,12 +468,12 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
                   style: TextStyle(color: Colors.white70));
             }),
         const Spacer(),
-          IconButton(
-            onPressed: (){},
-            icon: const Icon(Icons.stop_circle_outlined,
-                color: Colors.redAccent),
-            tooltip: 'Recording',
-          )
+        IconButton(
+          onPressed: (){},
+          icon: const Icon(Icons.stop_circle_outlined,
+              color: Colors.redAccent),
+          tooltip: 'Recording',
+        )
       ],
     );
   }
@@ -514,7 +491,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
           return Stack(
             alignment: Alignment.centerLeft,
             children: List.generate(
-              listeners.length > 5 ? 5 : listeners.length, // Show max 5
+              listeners.length > 10 ? 10 : listeners.length, // Show max 5
                   (index) {
                 final listener = listeners[index];
                 final photoURL = listener['photoURL'] as String?;
