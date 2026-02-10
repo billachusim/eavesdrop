@@ -34,6 +34,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   bool _isMuted = false;
   bool _isBroadcaster = false;
   bool _isProcessingEnd = false;
+  bool _hasJoinedListeners = false;
 
 
 
@@ -45,14 +46,24 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
   Future<void> _initialize() async {
     try {
-      await initializeAgora();
-      final user = Provider.of<User?>(context, listen: false);
-      // Show auth wall after 60 seconds if user is a guest
-      if (mounted && user == null) {
+      await _initializeAgora();
+      // Schedule checks for auth and pay walls.
+      if (mounted) {
         Future.delayed(const Duration(seconds: 60), () {
-          if (mounted) {
+          if (!mounted) return;
+
+          // Re-check user status inside the delayed future.
+          final currentUser = Provider.of<User?>(context, listen: false);
+          if (currentUser == null) {
+            // For guest users, show the Auth Wall.
             setState(() {
               _showAuthWall = true;
+              _agoraService.muteAllRemoteAudioStreams(true);
+            });
+          } else if (!_isBroadcaster) {
+            // For signed-in, non-host users, show the Paywall.
+            setState(() {
+              _showPaywall = true;
               _agoraService.muteAllRemoteAudioStreams(true);
             });
           }
@@ -68,13 +79,11 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     }
   }
 
-  Future<void> initializeAgora() async {
+  Future<void> _initializeAgora() async {
     final user = Provider.of<User?>(context, listen: false);
     if (user == null) {
       // Guest logic: Initialize and join as audience
       await _agoraService.initialize();
-      // Guests don't need a token for audience role usually, but if your setup requires it, handle that here.
-      // For simplicity, we assume guests can listen without a specific token.
       await _agoraService.joinChannel('', widget.call.channelName, 0, ClientRoleType.clientRoleAudience);
       return;
     }
@@ -111,6 +120,15 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     await _agoraService.joinChannel(
         token, widget.call.channelName, user.uid.hashCode, role);
 
+    if (_hasJoinedListeners) {
+      await _db.joinCallListeners(
+          widget.call.id, userModel.uid, userModel.photoURL.toString());
+      if (mounted) {
+        setState(() {
+          _hasJoinedListeners = true;
+        });
+      }
+    }
     if (isBroadcaster) {
       await _agoraService.startRecording();
     }
@@ -118,21 +136,14 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
   @override
   void dispose() {
-    // IMPORTANT: Dispose the Agora service to release the engine.
-    _agoraService.dispose();
+    _agoraService.leaveChannel().then((_) {
+      _agoraService.dispose();
+    });
     super.dispose();
+    //_db.leaveCallListeners(widget.call.id, Provider.of<User?>(context, listen: false)!.uid);
   }
 
   Future<void> _stopRecordingAndUpload() async {
-    if (!_isBroadcaster) return;
-
-    // Show saving indicator
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Saving recording...')),
-      );
-    }
-
     final recordingPath = await _agoraService.stopRecording();
     if (recordingPath != null) {
       final recordingUrl = await _storageService.uploadFile(
@@ -146,7 +157,6 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   Future<void> _leaveChannel({bool endCall = false}) async {
     if (_isProcessingEnd) return; // Prevent double taps
 
-    // 1. Show Confirmation Dialog
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -169,34 +179,28 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
     if (confirmed != true) return;
 
-    // 2. Start Progress Indicator
     setState(() => _isProcessingEnd = true);
 
     try {
-      final navigator = Navigator.of(context);
-
-      // 3. Execute logic
       if (endCall && _isBroadcaster) {
-        await _stopRecordingAndUpload();
+        _stopRecordingAndUpload();
         await _db.endCall(widget.call.id);
       }
 
       await _agoraService.leaveChannel();
 
-      // 4. Pop screen
-      if (navigator.canPop()) {
-        navigator.pop();
+      // Use context-aware Navigator and check if mounted before popping.
+      if (mounted) {
+        Navigator.of(context).pop();
       }
-
     } catch (e) {
-      if(mounted) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error leaving call: ${e.toString()}'))
-        );
+            SnackBar(content: Text('Error leaving call: ${e.toString()}')));
       }
     } finally {
-      // 5. Stop progress indicator
-      if(mounted) {
+      // Ensure state is not set on an unmounted widget.
+      if (mounted) {
         setState(() => _isProcessingEnd = false);
       }
     }
@@ -436,6 +440,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     );
   }
 
+
   Widget _topBar(BuildContext context, bool isPrivilegedUser) {
     return Row(
       children: [
@@ -595,9 +600,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
         if (isPrivilegedUser) ...[
           ElevatedButton(
             onPressed: () async {
-              final navigator = Navigator.of(context);
               await _leaveChannel(endCall: true);
-              navigator.pop();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -617,9 +620,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
         if (canLeaveQuietly)
           ElevatedButton(
             onPressed: () async {
-              final navigator = Navigator.of(context);
               await _leaveChannel();
-              navigator.pop();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
@@ -634,6 +635,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
+
       ],
     );
   }

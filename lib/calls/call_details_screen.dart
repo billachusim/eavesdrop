@@ -179,8 +179,8 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
           children: [
             const CircleAvatar(
               radius: 20,
-              backgroundImage: NetworkImage("https://firebasestorage.googleapis.com/v0/b/clair-52652/o/ClaireVartar%2Ficons8-strawberry-72.png?alt=media&token=ff64370f-939c-46ce-af5e-d220a625ef51"),
-              child: Icon(Icons.person, color: Colors.white70),
+              backgroundImage: NetworkImage(
+                  "https://firebasestorage.googleapis.com/v0/b/clair-52652/o/ClaireVartar%2Ficons8-strawberry-72.png?alt=media&token=ff64370f-939c-46ce-af5e-d220a625ef51"),
             ),
             const SizedBox(width: 12),
             Column(
@@ -208,7 +208,10 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
               style: textTheme.bodyLarge!
                   .copyWith(color: Colors.white, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 40, child: _listenerStrip()),
+            SizedBox(
+                height: 40,
+                child: _listenerStrip()
+            ),
           ],
         ),
         const SizedBox(height: 20),

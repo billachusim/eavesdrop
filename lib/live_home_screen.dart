@@ -100,6 +100,7 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
 
   @override
   void dispose() {
+    RingtoneService.stopRingtone();
     _callsStreamSubscription?.cancel();
     _userUpcomingCallsSubscription?.cancel();
     _featuredPastCallsSubscription.cancel();
