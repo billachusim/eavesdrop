@@ -5,6 +5,7 @@ import 'package:eavesdrop/booking/booking_screen.dart';
 import 'package:eavesdrop/calls/call_details_screen.dart';
 import 'package:eavesdrop/calls/favorite_calls_screen.dart';
 import 'package:eavesdrop/calls/my_calls_screen.dart';
+import 'package:eavesdrop/constants/topic_mood_data.dart';
 import 'package:eavesdrop/credits_screen.dart';
 import 'package:eavesdrop/live_call_screen.dart';
 import 'package:eavesdrop/models/call_model.dart';
@@ -36,12 +37,7 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
   HomeFeedFilter _activeFilter = HomeFeedFilter.all;
   String _searchQuery = '';
 
-  final List<String> _recommendedTopics = const [
-    'Relationships',
-    'Career',
-    'Anxiety',
-    'Loneliness',
-  ];
+  final List<String> _recommendedTopics = kConversationTopics;
 
   StreamSubscription? _callsStreamSubscription;
   List<CallModel> _liveCalls = [];
@@ -434,12 +430,12 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
     return StreamBuilder<UserModel>(
       stream: _db.streamUser(_user!.uid),
       builder: (context, snapshot) {
-        final followed = snapshot.data?.followedTopics.toSet() ?? <String>{};
+        final followed = (snapshot.data?.followedTopics ?? const <String>[]).map((e) => e.toLowerCase()).toSet();
         return ListView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           children: _recommendedTopics.map((topic) {
-            final isSelected = followed.contains(topic);
+            final isSelected = followed.contains(topic.toLowerCase());
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: FilterChip(

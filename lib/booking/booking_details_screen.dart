@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:booking_calendar/booking_calendar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:eavesdrop/constants/topic_mood_data.dart';
 import 'package:eavesdrop/models/user_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -37,8 +38,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   bool _isPrivate = false;
   var uuid = const Uuid();
   bool _isLoading = false;
-
-  final List<String> _moods = ['Happy', 'Sad', 'Angry', 'Anxious', 'Excited'];
+  final List<String> _moods = kMoodOptions;
 
   @override
   void initState() {

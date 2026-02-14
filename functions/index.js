@@ -9,6 +9,70 @@ admin.initializeApp();
 const APP_ID = process.env.AGORA_APP_ID;
 const APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE;
 
+const TOPIC_KEYWORDS = {
+  relationships: ["relationship", "relationships", "partner", "marriage", "romance"],
+  career: ["career", "job", "work", "interview", "promotion"],
+  anxiety: ["anxiety", "panic", "worry", "fear"],
+  loneliness: ["lonely", "loneliness", "alone", "isolated"],
+  family: ["family", "parent", "mom", "dad", "sibling"],
+  "self-esteem": ["self-esteem", "confidence", "insecure"],
+  friendship: ["friend", "friendship"],
+  breakups: ["breakup", "breakups", "heartbreak"],
+  parenting: ["parenting", "child", "kids", "motherhood", "fatherhood"],
+  grief: ["grief", "loss", "mourning"],
+  stress: ["stress", "pressured", "tension"],
+  burnout: ["burnout", "burned out", "exhausted"],
+  money: ["money", "finance", "debt", "salary"],
+  faith: ["faith", "spiritual", "religion"],
+  identity: ["identity", "self", "belonging"],
+  health: ["health", "wellness", "sick", "illness"],
+  habits: ["habit", "routine", "discipline"],
+  motivation: ["motivation", "focus", "goals"],
+  boundaries: ["boundary", "boundaries"],
+  dating: ["dating", "date", "crush", "situationship"],
+};
+
+function chunkArray(array, size) {
+  const chunks = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+  return chunks;
+}
+
+function extractCallTopics(call) {
+  const topics = new Set();
+
+  if (Array.isArray(call.topics)) {
+    call.topics.forEach((topic) => topics.add(String(topic).toLowerCase()));
+  }
+
+  if (call.userMood) {
+    topics.add(String(call.userMood).toLowerCase());
+  }
+
+  const haystack = `${call.title || ""} ${call.userMood || ""}`.toLowerCase();
+  Object.entries(TOPIC_KEYWORDS).forEach(([topic, keywords]) => {
+    if (keywords.some((keyword) => haystack.includes(keyword))) {
+      topics.add(topic);
+    }
+  });
+
+  return Array.from(topics);
+}
+
+async function addInAppNotification(uid, title, body, type) {
+  await admin.firestore().collection("users").doc(uid)
+      .collection("notifications")
+      .add({
+        title,
+        body,
+        type,
+        createdAt: admin.firestore.Timestamp.now(),
+        read: false,
+      });
+}
+
 exports.generateAgoraToken = onCall(async (request) => {
   // Authentication check
   if (!request.auth) {
@@ -88,13 +152,30 @@ exports.scheduledCallHandler = onSchedule("every 1 minutes", async (event) => {
 
     // Get all users who have set a reminder
     const remindersSnapshot = await doc.ref.collection("reminders").get();
-    const userIds = remindersSnapshot.docs.map((d) => d.id);
+    const userIdSet = new Set(remindersSnapshot.docs.map((d) => d.id));
 
     // Also notify the host
-    userIds.push(call.hostId);
+    userIdSet.add(call.hostId);
 
-    // Get the FCM tokens for these users
+    // Notify users who follow matching topics/moods
+    const callTopics = extractCallTopics(call);
+    if (callTopics.length > 0) {
+      const topicChunks = chunkArray(callTopics, 10);
+      for (const topicChunk of topicChunks) {
+        const topicFollowersSnapshot = await admin.firestore()
+            .collection("users")
+            .where("followedTopics", "array-contains-any", topicChunk)
+            .get();
+
+        topicFollowersSnapshot.docs.forEach((followerDoc) => {
+          userIdSet.add(followerDoc.id);
+        });
+      }
+    }
+
+    // Get tokens + create in-app notifications
     const tokens = [];
+    const userIds = Array.from(userIdSet);
     for (const userId of userIds) {
       const userDoc = await admin.firestore().collection("users").doc(userId).get();
       if (userDoc.exists) {
@@ -103,9 +184,16 @@ exports.scheduledCallHandler = onSchedule("every 1 minutes", async (event) => {
           tokens.push(user.fcmToken);
         }
       }
+
+      await addInAppNotification(
+          userId,
+          "Call Starting!",
+          `The call "${call.title}" is starting now!`,
+          "call_start",
+      );
     }
 
-    // Send a notification to each user
+    // Send a push notification
     if (tokens.length > 0) {
       const message = {
         notification: {
@@ -114,13 +202,14 @@ exports.scheduledCallHandler = onSchedule("every 1 minutes", async (event) => {
         },
         data: {
           callId: callId,
+          topics: callTopics.join(","),
         },
         tokens: tokens,
       };
 
       try {
         await admin.messaging().sendMulticast(message);
-        console.log(`Notifications sent for call ${callId}`);
+        console.log(`Notifications sent for call ${callId} to ${userIds.length} users.`);
       } catch (error) {
         console.error(`Error sending notifications for call ${callId}:`, error);
       }

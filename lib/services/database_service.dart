@@ -351,14 +351,16 @@ class DatabaseService {
   }
 
   Future<void> followTopic(String uid, String topic) async {
+    final normalizedTopic = topic.toLowerCase();
     await _db.collection('users').doc(uid).set({
-      'followedTopics': FieldValue.arrayUnion([topic]),
+      'followedTopics': FieldValue.arrayUnion([normalizedTopic]),
     }, SetOptions(merge: true));
   }
 
   Future<void> unfollowTopic(String uid, String topic) async {
+    final normalizedTopic = topic.toLowerCase();
     await _db.collection('users').doc(uid).set({
-      'followedTopics': FieldValue.arrayRemove([topic]),
+      'followedTopics': FieldValue.arrayRemove([normalizedTopic]),
     }, SetOptions(merge: true));
   }
 
