@@ -156,6 +156,18 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
                         color: Colors.white70,
                       ),
                     ),
+                    if ((widget.call.userMood ?? '').isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          Chip(
+                            label: Text(widget.call.userMood!),
+                            backgroundColor: Colors.white.withValues(alpha: 0.1),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 24),
                     if (isPast) _buildPastCallFooter(hasRecording),
                     if (isUpcoming) _buildUpcomingCallFooter(context, user, db),
@@ -202,7 +214,17 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
                       db.toggleFeaturedCall(widget.call.id, !widget.call.isFeatured),
                 );
               }
-              return const SizedBox.shrink();
+              return IconButton(
+                icon: const Icon(Icons.bookmark_border, color: Colors.white70),
+                onPressed: () async {
+                  await db.favoriteCall(currentUser.uid, widget.call);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Saved call.')),
+                    );
+                  }
+                },
+              );
             },
           ),
       ],

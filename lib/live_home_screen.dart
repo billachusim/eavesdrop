@@ -3,11 +3,13 @@ import 'package:eavesdrop/admin/admin_dashboard.dart';
 import 'package:eavesdrop/auth/auth_service.dart';
 import 'package:eavesdrop/booking/booking_screen.dart';
 import 'package:eavesdrop/calls/call_details_screen.dart';
+import 'package:eavesdrop/calls/favorite_calls_screen.dart';
 import 'package:eavesdrop/calls/my_calls_screen.dart';
 import 'package:eavesdrop/credits_screen.dart';
 import 'package:eavesdrop/live_call_screen.dart';
 import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/models/user_model.dart';
+import 'package:eavesdrop/notification_center_screen.dart';
 import 'package:eavesdrop/services/database_service.dart';
 import 'package:eavesdrop/services/ringtone_service.dart';
 import 'package:eavesdrop/widgets/call_card.dart';
@@ -30,7 +32,16 @@ class LiveHomeScreen extends StatefulWidget {
 
 class _LiveHomeScreenState extends State<LiveHomeScreen> {
   final DatabaseService _db = DatabaseService();
+  final TextEditingController _searchController = TextEditingController();
   HomeFeedFilter _activeFilter = HomeFeedFilter.all;
+  String _searchQuery = '';
+
+  final List<String> _recommendedTopics = const [
+    'Relationships',
+    'Career',
+    'Anxiety',
+    'Loneliness',
+  ];
 
   StreamSubscription? _callsStreamSubscription;
   List<CallModel> _liveCalls = [];
@@ -42,11 +53,9 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
   @override
   void initState() {
     super.initState();
-
     _setupCallsStream();
 
-    _featuredPastCallsSubscription =
-        _db.streamFeaturedPastCalls().listen((calls) {
+    _featuredPastCallsSubscription = _db.streamFeaturedPastCalls().listen((calls) {
       if (mounted) setState(() => _featuredPastCalls = calls);
     });
   }
@@ -88,8 +97,7 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
       _user = user;
       _userUpcomingCallsSubscription?.cancel();
       if (_user != null) {
-        _userUpcomingCallsSubscription =
-            _db.streamUserUpcomingCalls(_user!.uid).listen((calls) {
+        _userUpcomingCallsSubscription = _db.streamUserUpcomingCalls(_user!.uid).listen((calls) {
           if (mounted) setState(() => _userUpcomingCalls = calls);
         });
       } else {
@@ -106,6 +114,7 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
     _callsStreamSubscription?.cancel();
     _userUpcomingCallsSubscription?.cancel();
     _featuredPastCallsSubscription.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -117,8 +126,7 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
     for (var call in _userUpcomingCalls) {
       allCalls[call.channelName] = call;
     }
-    return allCalls.values.toList()
-      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+    return allCalls.values.toList()..sort((a, b) => a.startTime.compareTo(b.startTime));
   }
 
   @override
@@ -134,25 +142,50 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
             return <Widget>[
               SliverAppBar(
                 title: Text(
-                  "Eavesdrop",
+                  'Eavesdrop',
                   style: textTheme.headlineMedium!.copyWith(
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
                   ),
                 ),
                 bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(134.0),
+                  preferredSize: Size.fromHeight(_user != null ? 250.0 : 206.0),
                   child: Column(
                     children: [
-                      SizedBox(
-                        height: 48.0,
-                        child: _buildMenuButtons(_user),
-                      ),
+                      SizedBox(height: 48.0, child: _buildMenuButtons(_user)),
                       const SizedBox(height: 8),
-                      SizedBox(
-                        height: 44,
-                        child: _buildFilterChips(),
+                      SizedBox(height: 44, child: _buildFilterChips()),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (value) => setState(() => _searchQuery = value),
+                          decoration: InputDecoration(
+                            hintText: 'Search topic, mood, host, date…',
+                            prefixIcon: const Icon(Icons.search),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() => _searchQuery = '');
+                                    },
+                                    icon: const Icon(Icons.close),
+                                  )
+                                : null,
+                            filled: true,
+                            fillColor: const Color(0xFF1A1A1A),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
                       ),
+                      if (_user != null) ...[
+                        const SizedBox(height: 8),
+                        SizedBox(height: 40, child: _buildTopicFollowChips()),
+                      ],
                       const SizedBox(height: 8),
                     ],
                   ),
@@ -164,21 +197,33 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
               ),
             ];
           },
-          body: CustomScrollView(
-            slivers: <Widget>[
-              _buildSection(context,
-                  title: "Live Now",
-                  calls: _applyFilter(_liveCalls),
-                  emptyMessage: "No live calls right now."),
-              _buildSection(context,
-                  title: "Upcoming",
-                  calls: _applyFilter(_upcomingCalls),
-                  emptyMessage: "No upcoming calls scheduled."),
-              _buildSection(context,
-                  title: "Featured Past Calls",
-                  calls: _applyFilter(_featuredPastCalls),
-                  emptyMessage: "No featured past calls available."),
-            ],
+          body: StreamBuilder<UserModel>(
+            stream: _user != null ? _db.streamUser(_user!.uid) : null,
+            builder: (context, userSnap) {
+              final userModel = userSnap.data;
+              return CustomScrollView(
+                slivers: <Widget>[
+                  _buildSection(
+                    context,
+                    title: 'Live Now',
+                    calls: _applySearch(_applyPersonalization(_applyFilter(_liveCalls), userModel)),
+                    emptyMessage: 'No live calls right now.',
+                  ),
+                  _buildSection(
+                    context,
+                    title: 'Upcoming',
+                    calls: _applySearch(_applyPersonalization(_applyFilter(_upcomingCalls), userModel)),
+                    emptyMessage: 'No upcoming calls scheduled.',
+                  ),
+                  _buildSection(
+                    context,
+                    title: 'Featured Past Calls',
+                    calls: _applySearch(_applyPersonalization(_applyFilter(_featuredPastCalls), userModel)),
+                    emptyMessage: 'No featured past calls available.',
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -202,7 +247,6 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
     );
   }
 
-
   List<CallModel> _applyFilter(List<CallModel> calls) {
     final now = DateTime.now();
     switch (_activeFilter) {
@@ -225,6 +269,38 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
       case HomeFeedFilter.all:
         return calls;
     }
+  }
+
+  List<CallModel> _applySearch(List<CallModel> calls) {
+    if (_searchQuery.trim().isEmpty) return calls;
+    final q = _searchQuery.toLowerCase();
+    return calls.where((c) {
+      return c.title.toLowerCase().contains(q) ||
+          c.userNickname.toLowerCase().contains(q) ||
+          c.hostName.toLowerCase().contains(q) ||
+          (c.userMood?.toLowerCase().contains(q) ?? false);
+    }).toList();
+  }
+
+  List<CallModel> _applyPersonalization(List<CallModel> calls, UserModel? userModel) {
+    if (userModel == null) return calls;
+    final followedHosts = userModel.followedHostIds.toSet();
+    final followedTopics = userModel.followedTopics.map((e) => e.toLowerCase()).toSet();
+    final prioritized = [...calls]
+      ..sort((a, b) {
+        int score(CallModel call) {
+          final hostScore = followedHosts.contains(call.hostId) ? 2 : 0;
+          final topicScore = followedTopics.any(
+                (topic) => call.title.toLowerCase().contains(topic) || (call.userMood?.toLowerCase().contains(topic) ?? false),
+              )
+              ? 1
+              : 0;
+          return hostScore + topicScore;
+        }
+
+        return score(b).compareTo(score(a));
+      });
+    return prioritized;
   }
 
   Widget _buildFilterChips() {
@@ -271,13 +347,11 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
                 if (userModel.isAdmin || userModel.isSuperAdmin) {
                   return TextButton.icon(
                     icon: const Icon(Icons.dashboard, color: Colors.white),
-                    label: const Text('Admin',
-                        style: TextStyle(color: Colors.white)),
+                    label: const Text('Admin', style: TextStyle(color: Colors.white)),
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (context) => const AdminDashboard()),
+                        MaterialPageRoute(builder: (context) => const AdminDashboard()),
                       );
                     },
                   );
@@ -297,13 +371,32 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
           },
         ),
         TextButton.icon(
+          icon: const Icon(Icons.bookmark, color: Colors.white),
+          label: const Text('Saved', style: TextStyle(color: Colors.white)),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const FavoriteCallsScreen()),
+            );
+          },
+        ),
+        TextButton.icon(
+          icon: const Icon(Icons.notifications_none, color: Colors.white),
+          label: const Text('Alerts', style: TextStyle(color: Colors.white)),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const NotificationCenterScreen()),
+            );
+          },
+        ),
+        TextButton.icon(
           icon: const Icon(Icons.call, color: Colors.white),
           label: const Text('My Calls', style: TextStyle(color: Colors.white)),
           onPressed: () {
             if (user == null) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Please log in to see your calls.')),
+                const SnackBar(content: Text('Please log in to see your calls.')),
               );
               return;
             }
@@ -336,7 +429,43 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
     );
   }
 
-  Widget _buildSection(BuildContext context, {required String title, required List<CallModel> calls, required String emptyMessage}) {
+  Widget _buildTopicFollowChips() {
+    if (_user == null) return const SizedBox.shrink();
+    return StreamBuilder<UserModel>(
+      stream: _db.streamUser(_user!.uid),
+      builder: (context, snapshot) {
+        final followed = snapshot.data?.followedTopics.toSet() ?? <String>{};
+        return ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          children: _recommendedTopics.map((topic) {
+            final isSelected = followed.contains(topic);
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                label: Text(topic),
+                selected: isSelected,
+                onSelected: (selected) async {
+                  if (selected) {
+                    await _db.followTopic(_user!.uid, topic);
+                  } else {
+                    await _db.unfollowTopic(_user!.uid, topic);
+                  }
+                },
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildSection(
+    BuildContext context, {
+    required String title,
+    required List<CallModel> calls,
+    required String emptyMessage,
+  }) {
     final textTheme = GoogleFonts.interTextTheme();
 
     return SliverMainAxisGroup(
@@ -399,24 +528,24 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
                   return CallCard(
                     call: call,
                     onTap: () {
-                       if (call.isLive) {
-                         RingtoneService.stopRingtone();
-                         if (_user == null) {
-                           ScaffoldMessenger.of(context).showSnackBar(
-                             const SnackBar(content: Text('Please log in to join a call.')),
-                           );
-                           return;
-                         }
-                         Navigator.push(
-                           context,
-                           MaterialPageRoute(builder: (context) => LiveCallScreen(call: call)),
-                         );
-                       } else {
-                         Navigator.push(
-                           context,
-                           MaterialPageRoute(builder: (context) => CallDetailsScreen(call: call)),
-                         );
-                       }
+                      if (call.isLive) {
+                        RingtoneService.stopRingtone();
+                        if (_user == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please log in to join a call.')),
+                          );
+                          return;
+                        }
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => LiveCallScreen(call: call)),
+                        );
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => CallDetailsScreen(call: call)),
+                        );
+                      }
                     },
                     onPlayRecording: () {
                       Navigator.push(

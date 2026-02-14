@@ -7,10 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
-import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 import 'package:in_app_purchase_storekit/store_kit_wrappers.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CreditsScreen extends StatefulWidget {
   const CreditsScreen({super.key});
@@ -33,7 +33,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text("Get Credits"),
+        title: const Text('Get Credits'),
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -42,16 +42,12 @@ class _CreditsScreenState extends State<CreditsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Live Credit Balance Display
               if (user != null)
                 StreamBuilder<UserModel>(
                   stream: db.streamUser(user.uid),
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
                     if (!snapshot.hasData) {
-                      return const SizedBox.shrink(); // Or a default view
+                      return const SizedBox.shrink();
                     }
                     final userModel = snapshot.data!;
                     return Container(
@@ -60,37 +56,30 @@ class _CreditsScreenState extends State<CreditsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          const Text(
-                            "YOUR BALANCE",
-                            style: TextStyle(
-                                color: Colors.white70, letterSpacing: 1.5),
-                          ),
+                          const Text('YOUR BALANCE',
+                              style: TextStyle(color: Colors.white70, letterSpacing: 1.5)),
                           const SizedBox(height: 8),
                           Text(
-                            "${userModel.credits} Credits",
-                            style: textTheme.headlineMedium!.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                            '${userModel.credits} Credits',
+                            style: textTheme.headlineMedium!.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ],
                       ),
                     );
                   },
                 ),
-
+              _buildUseCasePacks(),
               const SizedBox(height: 10),
-
               Expanded(
                 child: Obx(() {
                   if (iapController.isLoading.value) {
-                    return const Center(
-                        child: CupertinoActivityIndicator(radius: 16));
+                    return const Center(child: CupertinoActivityIndicator(radius: 16));
                   }
 
                   if (!iapController.isAvailable.value) {
                     return const Center(
-                        child: Text("In-app purchases are not available.",
-                            style: TextStyle(color: Colors.white70)));
+                      child: Text('In-app purchases are not available.', style: TextStyle(color: Colors.white70)),
+                    );
                   }
 
                   return ListView.builder(
@@ -102,12 +91,68 @@ class _CreditsScreenState extends State<CreditsScreen> {
                   );
                 }),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
+              _buildSubscriptionTransparency(),
+              const SizedBox(height: 12),
               _buildFooter(),
               const SizedBox(height: 20),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildUseCasePacks() {
+    Widget pack(String title, String subtitle) {
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          margin: const EdgeInsets.only(right: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF181818),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        pack('2 Calls', 'Good for occasional deep chats'),
+        pack('4 Calls', 'Best for weekly consistency'),
+        pack('Unlock + 3 Qs', 'Live room + question credits'),
+      ],
+    );
+  }
+
+  Widget _buildSubscriptionTransparency() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.35)),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Premium perks transparency', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.amberAccent)),
+          SizedBox(height: 4),
+          Text('• Unlimited call listening and scheduling'),
+          Text('• 10,000 bonus credits monthly'),
+          Text('• Priority feature access (beta)'),
+        ],
       ),
     );
   }
@@ -121,34 +166,16 @@ class _CreditsScreenState extends State<CreditsScreen> {
 
     String subscriptionPeriod = '';
     if (isPremium && product is AppStoreProductDetails) {
-      final AppStoreProductDetails appStoreProductDetails = product;
-      final SKProductSubscriptionPeriodWrapper? subscriptionPeriodDetails =
-          appStoreProductDetails.skProduct.subscriptionPeriod;
-      if (subscriptionPeriodDetails != null) {
-        final int numberOfUnits = subscriptionPeriodDetails.numberOfUnits;
-        final SKSubscriptionPeriodUnit unit = subscriptionPeriodDetails.unit;
-
-        String unitText = '';
-        switch (unit) {
-          case SKSubscriptionPeriodUnit.day:
-            unitText = numberOfUnits == 1 ? 'day' : 'days';
-            break;
-          case SKSubscriptionPeriodUnit.week:
-            unitText = numberOfUnits == 1 ? 'week' : 'weeks';
-            break;
-          case SKSubscriptionPeriodUnit.month:
-            unitText = numberOfUnits == 1 ? 'month' : 'months';
-            break;
-          case SKSubscriptionPeriodUnit.year:
-            unitText = numberOfUnits == 1 ? 'year' : 'years';
-            break;
-        }
-
-        if (numberOfUnits == 1) {
-          subscriptionPeriod = '/ $unitText';
-        } else {
-          subscriptionPeriod = '/ $numberOfUnits $unitText';
-        }
+      final SKProductSubscriptionPeriodWrapper? period = product.skProduct.subscriptionPeriod;
+      if (period != null) {
+        final numberOfUnits = period.numberOfUnits;
+        final unitText = switch (period.unit) {
+          SKSubscriptionPeriodUnit.day => numberOfUnits == 1 ? 'day' : 'days',
+          SKSubscriptionPeriodUnit.week => numberOfUnits == 1 ? 'week' : 'weeks',
+          SKSubscriptionPeriodUnit.month => numberOfUnits == 1 ? 'month' : 'months',
+          SKSubscriptionPeriodUnit.year => numberOfUnits == 1 ? 'year' : 'years',
+        };
+        subscriptionPeriod = numberOfUnits == 1 ? '/ $unitText' : '/ $numberOfUnits $unitText';
       }
     }
 
@@ -156,21 +183,9 @@ class _CreditsScreenState extends State<CreditsScreen> {
       margin: const EdgeInsets.only(bottom: 18),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isPremium
-            ? const Color(0xFF1C1C1C)
-            : const Color(0xFF151515),
+        color: isPremium ? const Color(0xFF1C1C1C) : const Color(0xFF151515),
         borderRadius: BorderRadius.circular(20),
-        border: isPremium
-            ? Border.all(color: Colors.amber, width: 1.5)
-            : null,
-        boxShadow: isPremium
-            ? [
-                BoxShadow(
-                  color: Colors.amber.withAlpha(64),
-                  blurRadius: 20,
-                )
-              ]
-            : [],
+        border: isPremium ? Border.all(color: Colors.amber, width: 1.5) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,96 +193,51 @@ class _CreditsScreenState extends State<CreditsScreen> {
           if (isPremium)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.amber,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                "PREMIUM",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                  fontSize: 11,
-                ),
-              ),
+              decoration: BoxDecoration(color: Colors.amber, borderRadius: BorderRadius.circular(8)),
+              child: const Text('PREMIUM', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 11)),
             ),
-
           if (isPremium) const SizedBox(height: 10),
-
-          Text(
-            title.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.white70,
-            ),
-          ),
-
+          Text(title.toUpperCase(), style: const TextStyle(fontSize: 16, color: Colors.white70)),
           const SizedBox(height: 6),
-
           Text(
-            isPremium ? "Unlimited Access" : product.description,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-            ),
+            isPremium ? 'Unlimited Access' : product.description,
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
           ),
-
           const SizedBox(height: 6),
-
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                product.price,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                ),
-              ),
+              Text(product.price, style: const TextStyle(color: Colors.white70, fontSize: 16)),
               if (subscriptionPeriod.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(left: 4, bottom: 2),
-                  child: Text(
-                    subscriptionPeriod,
-                    style: const TextStyle(
-                        color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 14),
-                  ),
+                  child: Text(subscriptionPeriod, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 14)),
                 ),
             ],
           ),
-
           if (isPremium)
             Padding(
               padding: const EdgeInsets.only(top: 10.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildPerk("Unlimited access to join and schedule calls"),
-                  _buildPerk("10,000 bonus credits monthly"),
+                  _buildPerk('Unlimited access to join and schedule calls'),
+                  _buildPerk('10,000 bonus credits monthly'),
                 ],
               ),
             ),
-
           const SizedBox(height: 16),
-
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                iapController.buyProduct(product);
-              },
+              onPressed: () => iapController.buyProduct(product),
               style: ElevatedButton.styleFrom(
                 backgroundColor: isPremium ? Colors.amber : Colors.white,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: Text(
-                isPremium ? "Subscribe" : "Buy Credits",
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
+              child: Text(isPremium ? 'Subscribe' : 'Buy Credits', style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -288,7 +258,6 @@ class _CreditsScreenState extends State<CreditsScreen> {
     );
   }
 
-
   Widget _buildFooter() {
     const linkStyle = TextStyle(
       color: Colors.white,
@@ -303,7 +272,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
       child: Column(
         children: [
           const Text(
-            "Secure store payment encryption enabled.",
+            'Secure store payment encryption enabled.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white38, fontSize: 11),
           ),
@@ -312,16 +281,13 @@ class _CreditsScreenState extends State<CreditsScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               GestureDetector(
-                onTap: () => _launchUrl(
-                    "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"),
-                child: const Text("Terms of Use (EULA)", style: linkStyle),
+                onTap: () => _launchUrl('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/'),
+                child: const Text('Terms of Use (EULA)', style: linkStyle),
               ),
-              const Text("  &  ",
-                  style: TextStyle(color: Colors.white, fontSize: 12)),
+              const Text('  &  ', style: TextStyle(color: Colors.white, fontSize: 12)),
               GestureDetector(
-                onTap: () => _launchUrl(
-                    "https://sites.google.com/view/claire-diary/claire-privacy-policy"), // Replace with your privacy policy URL
-                child: const Text("Privacy Policy", style: linkStyle),
+                onTap: () => _launchUrl('https://sites.google.com/view/claire-diary/claire-privacy-policy'),
+                child: const Text('Privacy Policy', style: linkStyle),
               ),
             ],
           ),

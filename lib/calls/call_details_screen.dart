@@ -1,9 +1,13 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:eavesdrop/booking/booking_screen.dart';
+import 'package:eavesdrop/host_profile_screen.dart';
 import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/models/user_model.dart';
 import 'package:eavesdrop/services/database_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
@@ -127,6 +131,8 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
                     _buildAudioPlayer(textTheme)
                   else
                     _buildNoRecordingAvailable(textTheme),
+                  const SizedBox(height: 20),
+                  _buildPostCallUpsell(),
                 ],
               ),
             ),
@@ -137,6 +143,7 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
   }
 
   Widget _buildCallInfo(TextTheme textTheme) {
+    final currentUser = FirebaseAuth.instance.currentUser;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -255,6 +262,97 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
               backgroundColor: const Color(0xFF2D2D2D),
             ),
           ),
+        const SizedBox(height: 12),
+        StreamBuilder<UserModel>(
+          stream: _db.streamUser(widget.call.hostId),
+          builder: (context, snapshot) {
+            final host = snapshot.data;
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (host != null)
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => HostProfileScreen(host: host)),
+                      );
+                    },
+                    icon: const Icon(Icons.person_outline),
+                    label: const Text('Host Profile'),
+                  ),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    await Clipboard.setData(
+                      ClipboardData(text: 'https://eavesdrop.app/call/${widget.call.id}'),
+                    );
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Share link copied.')),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.share_outlined),
+                  label: const Text('Share'),
+                ),
+                if (currentUser != null)
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      await _db.favoriteCall(currentUser.uid, widget.call);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Saved to favorites.')),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.bookmark_add_outlined),
+                    label: const Text('Save'),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPostCallUpsell() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(color: Colors.white24),
+        const SizedBox(height: 8),
+        const Text('Keep going', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const BookingScreen()),
+                  );
+                },
+                icon: const Icon(Icons.calendar_today),
+                label: const Text('Book Follow-up'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Check credits page for value packs.')),
+                  );
+                },
+                icon: const Icon(Icons.local_offer_outlined),
+                label: const Text('Value Packs'),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }

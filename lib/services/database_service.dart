@@ -267,7 +267,8 @@ class DatabaseService {
         .collection('questions')
         .orderBy('timestamp', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList());
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList());
   }
 
 
@@ -292,6 +293,12 @@ class DatabaseService {
           .collection('reminders')
           .doc(userId)
           .set({});
+      await pushNotification(
+        userId,
+        title: 'Reminder Set',
+        body: 'You will be notified when this call starts.',
+        type: 'reminder',
+      );
     } catch (e) {
       // print(e.toString());
     }
@@ -318,5 +325,152 @@ class DatabaseService {
     } catch (e) {
       // print(e.toString());
     }
+  }
+
+  // ------- Social discovery + engagement -------
+
+  Stream<List<UserModel>> streamHosts() {
+    return _db
+        .collection('users')
+        .where('isHost', isEqualTo: true)
+        .snapshots()
+        .map((snap) =>
+            snap.docs.map((doc) => UserModel.fromMap(doc.data(), doc.id)).toList());
+  }
+
+  Future<void> followHost(String uid, String hostId) async {
+    await _db.collection('users').doc(uid).set({
+      'followedHostIds': FieldValue.arrayUnion([hostId]),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> unfollowHost(String uid, String hostId) async {
+    await _db.collection('users').doc(uid).set({
+      'followedHostIds': FieldValue.arrayRemove([hostId]),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> followTopic(String uid, String topic) async {
+    await _db.collection('users').doc(uid).set({
+      'followedTopics': FieldValue.arrayUnion([topic]),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> unfollowTopic(String uid, String topic) async {
+    await _db.collection('users').doc(uid).set({
+      'followedTopics': FieldValue.arrayRemove([topic]),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> favoriteCall(String uid, CallModel call) async {
+    await _db
+        .collection('users')
+        .doc(uid)
+        .collection('favoriteCalls')
+        .doc(call.id)
+        .set({
+      'callId': call.id,
+      'savedAt': Timestamp.now(),
+      'title': call.title,
+      'callerId': call.callerId,
+      'hostId': call.hostId,
+      'startTime': call.startTime,
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> unfavoriteCall(String uid, String callId) async {
+    await _db
+        .collection('users')
+        .doc(uid)
+        .collection('favoriteCalls')
+        .doc(callId)
+        .delete();
+  }
+
+  Stream<List<String>> streamFavoriteCallIds(String uid) {
+    return _db
+        .collection('users')
+        .doc(uid)
+        .collection('favoriteCalls')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => doc.id).toList());
+  }
+
+  Future<void> addReactionToCall(String callId, String emoji, String userId) async {
+    await _db.collection('calls').doc(callId).collection('reactions').add({
+      'emoji': emoji,
+      'userId': userId,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Stream<List<Map<String, dynamic>>> streamRecentReactions(String callId) {
+    return _db
+        .collection('calls')
+        .doc(callId)
+        .collection('reactions')
+        .orderBy('timestamp', descending: true)
+        .limit(30)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList());
+  }
+
+  Future<void> upvoteQuestion(String callId, String questionId, String uid) async {
+    await _db
+        .collection('calls')
+        .doc(callId)
+        .collection('questions')
+        .doc(questionId)
+        .set({
+      'upvotes': FieldValue.increment(1),
+      'upvotedBy': FieldValue.arrayUnion([uid]),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> pinQuestion(String callId, String questionId, bool pinned) async {
+    await _db
+        .collection('calls')
+        .doc(callId)
+        .collection('questions')
+        .doc(questionId)
+        .set({'pinned': pinned}, SetOptions(merge: true));
+  }
+
+  Future<void> dismissQuestion(String callId, String questionId) async {
+    await _db
+        .collection('calls')
+        .doc(callId)
+        .collection('questions')
+        .doc(questionId)
+        .set({'dismissed': true}, SetOptions(merge: true));
+  }
+
+  Future<void> banUserFromCall(String callId, String userId) async {
+    await _db.collection('calls').doc(callId).collection('bannedUsers').doc(userId).set({
+      'bannedAt': Timestamp.now(),
+    });
+  }
+
+  Stream<List<Map<String, dynamic>>> streamNotifications(String uid) {
+    return _db
+        .collection('users')
+        .doc(uid)
+        .collection('notifications')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList());
+  }
+
+  Future<void> pushNotification(String uid,
+      {required String title, required String body, String? type}) async {
+    await _db.collection('users').doc(uid).collection('notifications').add({
+      'title': title,
+      'body': body,
+      'type': type ?? 'general',
+      'createdAt': Timestamp.now(),
+      'read': false,
+    });
   }
 }

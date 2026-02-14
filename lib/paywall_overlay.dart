@@ -54,7 +54,7 @@ class PaywallOverlay extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    "Unlock after first minute: 50 credits",
+                    "Free 10-minute trial ended · Unlock for 50 credits",
                     style: TextStyle(
                       color: Colors.greenAccent,
                       fontWeight: FontWeight.w600,

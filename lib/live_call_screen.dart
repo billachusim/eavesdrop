@@ -37,6 +37,9 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   bool _hasJoinedListeners = false;
   String _connectionLabel = 'Connecting…';
   bool _connectionWarning = false;
+  static const Duration _freeTrialDuration = Duration(minutes: 10);
+  Duration _freeTrialRemaining = _freeTrialDuration;
+  Timer? _trialTimer;
 
 
 
@@ -49,9 +52,23 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   Future<void> _initialize() async {
     try {
       await _initializeAgora();
-      // Schedule checks for auth and pay walls.
+      // Free-trial timer + paywall/auth walls.
       if (mounted) {
-        Future.delayed(const Duration(seconds: 60), () {
+        _trialTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+          if (!mounted) return;
+          if (_isBroadcaster) {
+            timer.cancel();
+            return;
+          }
+          setState(() {
+            _freeTrialRemaining -= const Duration(seconds: 1);
+          });
+          if (_freeTrialRemaining <= Duration.zero) {
+            timer.cancel();
+          }
+        });
+
+        Future.delayed(_freeTrialDuration, () {
           if (!mounted) return;
 
           // Re-check user status inside the delayed future.
@@ -202,6 +219,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
   @override
   void dispose() {
+    _trialTimer?.cancel();
     final user = Provider.of<User?>(context, listen: false);
     if (user != null && _hasJoinedListeners) {
       _db.leaveCallListeners(widget.call.id, user.uid);
@@ -311,6 +329,9 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
       'name': currentUser.displayName,
       'photoURL': currentUser.photoURL,
       'question': question,
+      'upvotes': 0,
+      'pinned': false,
+      'dismissed': false,
       'timestamp': DateTime.now(),
     });
     if (mounted) {
@@ -389,6 +410,8 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
                               ),
                             ),
                             const SizedBox(height: 30),
+                            _reactionsTicker(),
+                            const SizedBox(height: 12),
                             Expanded(
                               child: Center(
                                 child: Row(
@@ -479,7 +502,9 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
               ),
             );
           }
-          final questions = snapshot.data!;
+          final questions = [...snapshot.data!]
+            ..removeWhere((q) => q['dismissed'] == true)
+            ..sort((a, b) => ((b['upvotes'] ?? 0) as num).compareTo((a['upvotes'] ?? 0) as num));
           return ListView.builder(
             itemCount: questions.length,
             itemBuilder: (context, index) {
@@ -498,7 +523,39 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
                         : null,
                   ),
                   title: Text(item['question']!, style: const TextStyle(color: Colors.white)),
-                  subtitle: Text('- ${item['name']}', style: const TextStyle(color: Colors.white70)),
+                  subtitle: Text('- ${item['name']} · ${(item['upvotes'] ?? 0)} upvotes', style: const TextStyle(color: Colors.white70)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (!_isBroadcaster)
+                        IconButton(
+                          icon: const Icon(Icons.thumb_up_alt_outlined),
+                          onPressed: () {
+                            final currentUser = Provider.of<User?>(context, listen: false);
+                            if (currentUser != null && item['id'] != null) {
+                              _db.upvoteQuestion(widget.call.id, item['id'], currentUser.uid);
+                            }
+                          },
+                        ),
+                      if (_isBroadcaster && item['id'] != null)
+                        PopupMenuButton<String>(
+                          onSelected: (value) {
+                            if (value == 'pin') {
+                              _db.pinQuestion(widget.call.id, item['id'], true);
+                            } else if (value == 'dismiss') {
+                              _db.dismissQuestion(widget.call.id, item['id']);
+                            } else if (value == 'ban' && item['userId'] != null) {
+                              _db.banUserFromCall(widget.call.id, item['userId']);
+                            }
+                          },
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(value: 'pin', child: Text('Pin question')),
+                            PopupMenuItem(value: 'dismiss', child: Text('Dismiss question')),
+                            PopupMenuItem(value: 'ban', child: Text('Ban user from room')),
+                          ],
+                        ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -607,6 +664,35 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     );
   }
 
+  Widget _reactionsTicker() {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _db.streamRecentReactions(widget.call.id),
+      builder: (context, snapshot) {
+        final reactions = snapshot.data ?? const [];
+        if (reactions.isEmpty) return const SizedBox.shrink();
+        return SizedBox(
+          height: 28,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: reactions.length > 10 ? 10 : reactions.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 6),
+            itemBuilder: (context, index) {
+              final emoji = reactions[index]['emoji']?.toString() ?? '👏';
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(emoji),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
 
   Widget _interactionControls(BuildContext context, UserModel userModel) {
     return Row(
@@ -614,7 +700,12 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
       children: [
         FloatingActionButton(
           heroTag: 'reactions_btn',
-          onPressed: () {},
+          onPressed: () {
+            final user = Provider.of<User?>(context, listen: false);
+            if (user != null) {
+              _db.addReactionToCall(widget.call.id, '😂', user.uid);
+            }
+          },
           backgroundColor: const Color(0xFF2B2B2B),
           child: const Text("😂", style: TextStyle(fontSize: 24)),
         ),
@@ -658,6 +749,23 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
     return Column(
       children: [
+        if (!_isBroadcaster)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.blueGrey.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              _freeTrialRemaining > Duration.zero
+                  ? 'Free trial left: ${_freeTrialRemaining.inMinutes.toString().padLeft(2, '0')}:${(_freeTrialRemaining.inSeconds % 60).toString().padLeft(2, '0')}'
+                  : 'Free trial ended. Unlock to continue listening.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70),
+            ),
+          ),
 
         _interactionControls(context, user),
 

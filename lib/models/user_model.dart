@@ -12,6 +12,8 @@ class UserModel {
   final Timestamp? premiumExpiryDate;
   final bool isHost;
   final String? photoURL;
+  final List<String> followedHostIds;
+  final List<String> followedTopics;
 
   UserModel({
     required this.uid,
@@ -25,6 +27,8 @@ class UserModel {
     this.premiumExpiryDate,
     this.isHost = false,
     this.photoURL,
+    this.followedHostIds = const [],
+    this.followedTopics = const [],
   });
 
   factory UserModel.fromMap(Map<String, dynamic> data, String documentId) {
@@ -40,6 +44,8 @@ class UserModel {
       premiumExpiryDate: data['premiumExpiryDate'] as Timestamp?,
       isHost: data['isHost'] as bool? ?? false,
       photoURL: data['photoURL'] as String?,
+      followedHostIds: List<String>.from(data['followedHostIds'] ?? const []),
+      followedTopics: List<String>.from(data['followedTopics'] ?? const []),
     );
   }
 
@@ -55,6 +61,8 @@ class UserModel {
       'premiumExpiryDate': premiumExpiryDate,
       'isHost': isHost,
       'photoURL': photoURL,
+      'followedHostIds': followedHostIds,
+      'followedTopics': followedTopics,
     };
   }
 }
