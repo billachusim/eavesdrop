@@ -19,6 +19,8 @@ import 'package:rxdart/rxdart.dart';
 
 import 'auth/onboarding_screen.dart';
 
+enum HomeFeedFilter { all, live, soon, week, past }
+
 class LiveHomeScreen extends StatefulWidget {
   const LiveHomeScreen({super.key});
 
@@ -28,7 +30,7 @@ class LiveHomeScreen extends StatefulWidget {
 
 class _LiveHomeScreenState extends State<LiveHomeScreen> {
   final DatabaseService _db = DatabaseService();
-  bool _isMenuOpen = false;
+  HomeFeedFilter _activeFilter = HomeFeedFilter.all;
 
   StreamSubscription? _callsStreamSubscription;
   List<CallModel> _liveCalls = [];
@@ -131,37 +133,30 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
           headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
             return <Widget>[
               SliverAppBar(
-                title: _isMenuOpen
-                    ? null
-                    : Text(
-                        "Eavesdrop",
-                        style: textTheme.headlineMedium!.copyWith(
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                actions: [
-                  IconButton(
-                    icon: Icon(_isMenuOpen ? Icons.close : Icons.settings),
-                    onPressed: () {
-                      setState(() {
-                        _isMenuOpen = !_isMenuOpen;
-                      });
-                    },
+                title: Text(
+                  "Eavesdrop",
+                  style: textTheme.headlineMedium!.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
                   ),
-                ],
-                bottom: _isMenuOpen
-                    ? PreferredSize(
-                        preferredSize: const Size.fromHeight(80.0),
-                        child: Center(
-                          child: Container(
-                            height: 80.0,
-                            alignment: Alignment.center,
-                            child: _buildMenuButtons(_user),
-                          ),
-                        ),
-                      )
-                    : null,
+                ),
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(134.0),
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        height: 48.0,
+                        child: _buildMenuButtons(_user),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 44,
+                        child: _buildFilterChips(),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ),
                 backgroundColor: const Color(0xFF0D0D0D),
                 pinned: true,
                 floating: true,
@@ -173,15 +168,15 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
             slivers: <Widget>[
               _buildSection(context,
                   title: "Live Now",
-                  calls: _liveCalls,
+                  calls: _applyFilter(_liveCalls),
                   emptyMessage: "No live calls right now."),
               _buildSection(context,
                   title: "Upcoming",
-                  calls: _upcomingCalls,
+                  calls: _applyFilter(_upcomingCalls),
                   emptyMessage: "No upcoming calls scheduled."),
               _buildSection(context,
                   title: "Featured Past Calls",
-                  calls: _featuredPastCalls,
+                  calls: _applyFilter(_featuredPastCalls),
                   emptyMessage: "No featured past calls available."),
             ],
           ),
@@ -207,17 +202,65 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
     );
   }
 
-  Widget _buildMenuButtons(User? user) {
-    void navigateToOnboarding() {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+
+  List<CallModel> _applyFilter(List<CallModel> calls) {
+    final now = DateTime.now();
+    switch (_activeFilter) {
+      case HomeFeedFilter.live:
+        return calls.where((c) => c.isLive).toList();
+      case HomeFeedFilter.soon:
+        return calls
+            .where((c) => !c.isLive && c.startTime.toDate().isAfter(now))
+            .where((c) => c.startTime.toDate().difference(now).inHours <= 24)
+            .toList();
+      case HomeFeedFilter.week:
+        return calls
+            .where((c) => !c.isLive && c.startTime.toDate().isAfter(now))
+            .where((c) => c.startTime.toDate().difference(now).inDays <= 7)
+            .toList();
+      case HomeFeedFilter.past:
+        return calls
+            .where((c) => !c.isLive && c.startTime.toDate().isBefore(now))
+            .toList();
+      case HomeFeedFilter.all:
+        return calls;
+    }
+  }
+
+  Widget _buildFilterChips() {
+    Widget chip(HomeFeedFilter filter, String label) {
+      final selected = _activeFilter == filter;
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: ChoiceChip(
+          label: Text(label),
+          selected: selected,
+          onSelected: (_) => setState(() => _activeFilter = filter),
+          selectedColor: Colors.white,
+          labelStyle: TextStyle(color: selected ? Colors.black : Colors.white),
+          backgroundColor: const Color(0xFF1D1D1D),
+          side: BorderSide.none,
+        ),
       );
     }
 
-    return Wrap(
-      alignment: WrapAlignment.spaceEvenly,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    return ListView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      children: [
+        chip(HomeFeedFilter.all, 'All'),
+        chip(HomeFeedFilter.live, 'Live'),
+        chip(HomeFeedFilter.soon, 'Soon'),
+        chip(HomeFeedFilter.week, 'This Week'),
+        chip(HomeFeedFilter.past, 'Past'),
+      ],
+    );
+  }
+
+  Widget _buildMenuButtons(User? user) {
+    return ListView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       children: [
         if (user != null)
           StreamBuilder<UserModel>(
@@ -274,7 +317,12 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
           TextButton.icon(
             icon: const Icon(Icons.login, color: Colors.white),
             label: const Text('Login', style: TextStyle(color: Colors.white)),
-            onPressed: navigateToOnboarding,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+              );
+            },
           )
         else
           TextButton.icon(
@@ -282,11 +330,6 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
             label: const Text('Logout', style: TextStyle(color: Colors.white)),
             onPressed: () async {
               await AuthService().signOut();
-              if (mounted) {
-                setState(() {
-                  _isMenuOpen = false;
-                });
-              }
             },
           ),
       ],
@@ -311,11 +354,38 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
           ),
         ),
         if (calls.isEmpty)
-           SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.all(20),
-                child: Text(emptyMessage, style: const TextStyle(color: Colors.white54),),
+                child: Column(
+                  children: [
+                    const Icon(Icons.inbox_outlined, color: Colors.white38, size: 36),
+                    const SizedBox(height: 10),
+                    Text(
+                      emptyMessage,
+                      style: const TextStyle(color: Colors.white54),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: () {
+                        if (_user == null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+                          );
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const BookingScreen()),
+                          );
+                        }
+                      },
+                      child: Text(_user == null ? 'Log in to book a call' : 'Book your first call'),
+                    ),
+                  ],
+                ),
               ),
             ),
           )

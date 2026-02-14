@@ -148,6 +148,30 @@ class _BookingScreenState extends State<BookingScreen> {
           const SliverToBoxAdapter(
             child: HomeGreetingSlides(),
           ),
+
+          SliverToBoxAdapter(
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1B1B1B),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.amberAccent, size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Booking cost: 300 credits · Questions during live calls: 20 credits.',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           SliverFillRemaining(
             child: BookingCalendar(
               bookingService: mockBookingService,

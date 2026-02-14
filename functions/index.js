@@ -6,8 +6,8 @@ const {RtcTokenBuilder, RtcRole} = require("agora-token");
 admin.initializeApp();
 
 // Your Agora credentials
-const APP_ID = "7cbfdc57592f47b2a939e2838238f066";
-const APP_CERTIFICATE = "9bca5f09b5ab41bfbb09b15230835f90";
+const APP_ID = process.env.AGORA_APP_ID;
+const APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE;
 
 exports.generateAgoraToken = onCall(async (request) => {
   // Authentication check
@@ -15,6 +15,13 @@ exports.generateAgoraToken = onCall(async (request) => {
     throw new HttpsError(
         "unauthenticated",
         "The function must be called while authenticated.",
+    );
+  }
+
+  if (!APP_ID || !APP_CERTIFICATE) {
+    throw new HttpsError(
+        "failed-precondition",
+        "Agora credentials are not configured on the server.",
     );
   }
 

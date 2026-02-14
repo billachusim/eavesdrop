@@ -272,9 +272,23 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: Text(
-                        'Booking for: ${widget.booking.bookingStart.toLocal().toString().substring(0, 16)}',
+                        'Booking for: ${widget.booking.bookingStart.toLocal().toString().substring(0, 16)} (${DateTime.now().timeZoneName})',
                         style: const TextStyle(color: Colors.white),
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                    ),
+                    child: const Text(
+                      'Total due now: 300 credits',
+                      style: TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.w700),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -401,7 +415,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 40, vertical: 15),
                             ),
-                            child: const Text('Save Booking'),
+                            child: const Text('Confirm & Pay 300 Credits'),
                           ),
                   ),
                 ],

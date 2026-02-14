@@ -2,8 +2,7 @@ import 'dart:async';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:path_provider/path_provider.dart';
 
-// Replace with your Agora App ID
-const String agoraAppId = '7cbfdc57592f47b2a939e2838238f066';
+const String agoraAppId = String.fromEnvironment('AGORA_APP_ID');
 
 class AgoraService {
   late RtcEngine _engine;
@@ -17,8 +16,14 @@ class AgoraService {
     onAudioVolumeIndication,
     void Function(RtcConnection, int, int)? onUserJoined,
     void Function(RtcConnection, int, UserOfflineReasonType)? onUserOffline,
+    void Function(RtcConnection, ConnectionStateType, ConnectionChangedReasonType)?
+    onConnectionStateChanged,
   }) async {
     if (_isInitialized) return;
+    if (agoraAppId.isEmpty) {
+      throw Exception(
+          'AGORA_APP_ID is missing. Pass it via --dart-define=AGORA_APP_ID=...');
+    }
     _engine = createAgoraRtcEngine();
     await _engine.initialize(const RtcEngineContext(
       appId: agoraAppId,
@@ -46,6 +51,7 @@ class AgoraService {
         onUserJoined: onUserJoined,
         onUserOffline: onUserOffline,
         onAudioVolumeIndication: onAudioVolumeIndication,
+        onConnectionStateChanged: onConnectionStateChanged,
       ),
     );
     _isInitialized = true;

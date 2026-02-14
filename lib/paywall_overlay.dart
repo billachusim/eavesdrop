@@ -54,11 +54,16 @@ class PaywallOverlay extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    "1,241 people are still listening",
+                    "Unlock after first minute: 50 credits",
                     style: TextStyle(
                       color: Colors.greenAccent,
                       fontWeight: FontWeight.w600,
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Your balance: ${user.credits} credits',
+                    style: const TextStyle(color: Colors.white60),
                   ),
                   const SizedBox(height: 24),
                   SizedBox(

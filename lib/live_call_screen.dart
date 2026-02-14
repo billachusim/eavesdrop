@@ -35,6 +35,8 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   bool _isBroadcaster = false;
   bool _isProcessingEnd = false;
   bool _hasJoinedListeners = false;
+  String _connectionLabel = 'Connecting…';
+  bool _connectionWarning = false;
 
 
 
@@ -83,7 +85,39 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     final user = Provider.of<User?>(context, listen: false);
     if (user == null) {
       // Guest logic: Initialize and join as audience
-      await _agoraService.initialize();
+      await _agoraService.initialize(
+        onConnectionStateChanged: (connection, state, reason) {
+          if (!mounted) return;
+          setState(() {
+            switch (state) {
+              case ConnectionStateType.connectionStateConnecting:
+                _connectionLabel = 'Connecting…';
+                _connectionWarning = false;
+                break;
+              case ConnectionStateType.connectionStateConnected:
+                _connectionLabel = 'Connected';
+                _connectionWarning = false;
+                break;
+              case ConnectionStateType.connectionStateReconnecting:
+                _connectionLabel = 'Reconnecting…';
+                _connectionWarning = true;
+                break;
+              case ConnectionStateType.connectionStateFailed:
+                _connectionLabel = 'Connection failed';
+                _connectionWarning = true;
+                break;
+              case ConnectionStateType.connectionStateDisconnected:
+                _connectionLabel = 'Disconnected';
+                _connectionWarning = true;
+                break;
+              default:
+                _connectionLabel = 'Updating…';
+                _connectionWarning = false;
+                break;
+            }
+          });
+        },
+      );
       await _agoraService.joinChannel('', widget.call.channelName, 0, ClientRoleType.clientRoleAudience);
       return;
     }
@@ -104,7 +138,39 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     }
 
     await Permission.bluetoothConnect.request();
-    await _agoraService.initialize();
+    await _agoraService.initialize(
+      onConnectionStateChanged: (connection, state, reason) {
+        if (!mounted) return;
+        setState(() {
+          switch (state) {
+            case ConnectionStateType.connectionStateConnecting:
+              _connectionLabel = 'Connecting…';
+              _connectionWarning = false;
+              break;
+            case ConnectionStateType.connectionStateConnected:
+              _connectionLabel = 'Connected';
+              _connectionWarning = false;
+              break;
+            case ConnectionStateType.connectionStateReconnecting:
+              _connectionLabel = 'Reconnecting…';
+              _connectionWarning = true;
+              break;
+            case ConnectionStateType.connectionStateFailed:
+              _connectionLabel = 'Connection failed';
+              _connectionWarning = true;
+              break;
+            case ConnectionStateType.connectionStateDisconnected:
+              _connectionLabel = 'Disconnected';
+              _connectionWarning = true;
+              break;
+              default:
+                _connectionLabel = 'Updating…';
+                _connectionWarning = false;
+                break;
+          }
+        });
+      },
+    );
 
     final role = isBroadcaster
         ? ClientRoleType.clientRoleBroadcaster
@@ -120,7 +186,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     await _agoraService.joinChannel(
         token, widget.call.channelName, user.uid.hashCode, role);
 
-    if (_hasJoinedListeners) {
+    if (!_hasJoinedListeners) {
       await _db.joinCallListeners(
           widget.call.id, userModel.uid, userModel.photoURL.toString());
       if (mounted) {
@@ -136,11 +202,14 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
   @override
   void dispose() {
+    final user = Provider.of<User?>(context, listen: false);
+    if (user != null && _hasJoinedListeners) {
+      _db.leaveCallListeners(widget.call.id, user.uid);
+    }
     _agoraService.leaveChannel().then((_) {
       _agoraService.dispose();
     });
     super.dispose();
-    //_db.leaveCallListeners(widget.call.id, Provider.of<User?>(context, listen: false)!.uid);
   }
 
   Future<void> _stopRecordingAndUpload() async {
@@ -309,7 +378,6 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
                         child: Column(
                           children: [
                             const SizedBox(height: 12),
-                            // Pass the listener count from the stream
                             _topBar(context, isPrivilegedUser),
                             const SizedBox(height: 30),
                             Text(
@@ -472,6 +540,24 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
               return const Text("...",
                   style: TextStyle(color: Colors.white70));
             }),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: _connectionWarning
+                ? Colors.orange.withValues(alpha: 0.2)
+                : Colors.green.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            _connectionLabel,
+            style: TextStyle(
+              color: _connectionWarning ? Colors.orangeAccent : Colors.greenAccent,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
         const Spacer(),
         IconButton(
           onPressed: (){},
