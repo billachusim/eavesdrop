@@ -337,27 +337,27 @@ class _CallCardState extends State<CallCard>
 
   Widget _buildPastCallFooter(bool hasRecording) {
     if (hasRecording && widget.onPlayRecording != null) {
-      return Align(
-        alignment: Alignment.topLeft,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Text(
-              "Record is available.",
-              style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: widget.onPlayRecording,
+          icon: const Icon(Icons.play_arrow_rounded),
+          label: Text(
+            "Record is available.",
+            style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
+          ),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
             ),
-            SizedBox(
-              width: 50,
-              child: IconButton(
-                icon: const Icon(Icons.play_circle_filled),
-                iconSize: 50,
-                color: Colors.white,
-                onPressed: widget.onPlayRecording,
-              ),
+            textStyle: GoogleFonts.inter(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
             ),
-          ],
+          ),
         ),
       );
     }
