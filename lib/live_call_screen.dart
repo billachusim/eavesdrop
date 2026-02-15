@@ -273,8 +273,8 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
     try {
       if (endCall && _isBroadcaster) {
-        _stopRecordingAndUpload();
-        await _db.endCall(widget.call.id);
+        await _stopRecordingAndUpload();
+        _db.endCall(widget.call.id);
       }
 
       await _agoraService.leaveChannel();

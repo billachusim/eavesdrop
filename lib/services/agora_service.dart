@@ -85,7 +85,6 @@ class AgoraService {
 
   // Leave a channel
   Future<void> leaveChannel() async {
-    // Only leave the channel, do NOT release the engine here.
     await _engine.leaveChannel();
   }
 

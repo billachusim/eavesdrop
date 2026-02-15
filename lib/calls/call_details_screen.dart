@@ -1,6 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:eavesdrop/booking/booking_screen.dart';
+import 'package:eavesdrop/credits_screen.dart';
 import 'package:eavesdrop/host_profile_screen.dart';
 import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/models/user_model.dart';
@@ -344,8 +345,9 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Check credits page for value packs.')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CreditsScreen()),
                   );
                 },
                 icon: const Icon(Icons.local_offer_outlined),
