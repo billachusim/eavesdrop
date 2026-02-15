@@ -1,3 +1,4 @@
+import 'package:eavesdrop/constants/legal_links.dart';
 import 'package:eavesdrop/controllers/iap_controller.dart';
 import 'package:eavesdrop/models/user_model.dart';
 import 'package:eavesdrop/services/database_service.dart';
@@ -281,12 +282,12 @@ class _CreditsScreenState extends State<CreditsScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               GestureDetector(
-                onTap: () => _launchUrl('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/'),
+                onTap: () => _launchUrl(LegalLinks.termsOfUse),
                 child: const Text('Terms of Use (EULA)', style: linkStyle),
               ),
               const Text('  &  ', style: TextStyle(color: Colors.white, fontSize: 12)),
               GestureDetector(
-                onTap: () => _launchUrl('https://sites.google.com/view/claire-diary/claire-privacy-policy'),
+                onTap: () => _launchUrl(LegalLinks.privacyPolicy),
                 child: const Text('Privacy Policy', style: linkStyle),
               ),
             ],

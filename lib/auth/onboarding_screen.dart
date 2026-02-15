@@ -1,10 +1,12 @@
 import 'dart:math';
 
 import 'package:eavesdrop/auth/auth_service.dart';
+import 'package:eavesdrop/constants/legal_links.dart';
 import 'package:eavesdrop/widgets/primary_button.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -29,8 +31,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     super.dispose();
   }
 
-  void _launchPolicySite() {
-    // Implement URL Launcher logic here if needed, for now it does nothing.
+  Future<void> _launchPolicySite() async {
+    final uri = Uri.parse(LegalLinks.privacyPolicy);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   @override
@@ -97,10 +102,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   children: [
                     _SignUpTab(
                         textTheme: textTheme,
-                        onPolicyTap: _launchPolicySite),
+                        onPolicyTap: () => _launchPolicySite()),
                     _LoginTab(
                         textTheme: textTheme,
-                        onPolicyTap: _launchPolicySite),
+                        onPolicyTap: () => _launchPolicySite()),
                   ],
                 ),
               ),

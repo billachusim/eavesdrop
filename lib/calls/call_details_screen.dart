@@ -63,6 +63,18 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
       return;
     }
 
+    final hasConsent = await _ensureSummaryDataSharingConsent();
+    if (!hasConsent) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _summaryText =
+            'AI summary is turned off because you have not consented to share recording data with ElevenLabs.';
+      });
+      return;
+    }
+
     setState(() {
       _isLoadingSummary = true;
     });
@@ -81,6 +93,39 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
       _summaryText = summary;
       _isLoadingSummary = false;
     });
+  }
+
+  Future<bool> _ensureSummaryDataSharingConsent() async {
+    final hasConsent = await _summaryService.hasSummaryConsent();
+    if (hasConsent || !mounted) {
+      return hasConsent;
+    }
+
+    final granted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Allow AI summaries?'),
+        content: const Text(
+          'To generate an AI summary, Eavesdrop sends the call audio URL and call title to ElevenLabs. '
+          'Only allow this if you consent to sharing this conversation data with ElevenLabs for summarization.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Don\'t allow'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Allow'),
+          ),
+        ],
+      ),
+    );
+
+    final allow = granted ?? false;
+    await _summaryService.setSummaryConsent(allow);
+    return allow;
   }
 
   void _initAudioPlayer() {

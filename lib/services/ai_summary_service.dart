@@ -9,6 +9,17 @@ class AiSummaryService {
   static const String _apiKey = String.fromEnvironment('ELEVENLABS_API_KEY');
   static const String _endpoint =
       String.fromEnvironment('ELEVENLABS_SUMMARY_ENDPOINT', defaultValue: _defaultEndpoint);
+  static const String _consentKey = 'ai_summary_third_party_consent';
+
+  Future<bool> hasSummaryConsent() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_consentKey) ?? false;
+  }
+
+  Future<void> setSummaryConsent(bool granted) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_consentKey, granted);
+  }
 
   Future<String> getSummary({
     required String callId,

@@ -51,6 +51,12 @@
     	<string>This app requires access to the microphone to allow broadcasting audio in live rooms.</string>
     	<key>NSBluetoothPeripheralUsageDescription</key>
     	<string>This app requires Bluetooth access to connect to audio devices.</string>
+		<key>NSBluetoothAlwaysUsageDescription</key>
+		<string>This app requires Bluetooth access to connect to audio devices.</string>
+		<key>NSCalendarsFullAccessUsageDescription</key>
+		<string>This app requires calendar access to create and manage booked appointments.</string>
+		<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+		<string>This app requires calendar write access to add booked appointments to your calendar.</string>
 		<key>NSCalendarsUsageDescription</key>
 		<string>This app requires access to your calendar to add booked appointments.</string>
 	</dict>
