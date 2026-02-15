@@ -11,6 +11,7 @@ import 'package:eavesdrop/live_call_screen.dart';
 import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/models/user_model.dart';
 import 'package:eavesdrop/notification_center_screen.dart';
+import 'package:eavesdrop/services/call_state_service.dart';
 import 'package:eavesdrop/services/database_service.dart';
 import 'package:eavesdrop/services/ringtone_service.dart';
 import 'package:eavesdrop/widgets/call_card.dart';
@@ -36,6 +37,7 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   HomeFeedFilter _activeFilter = HomeFeedFilter.all;
   String _searchQuery = '';
+  bool _isMenuOpen = false;
 
   final List<String> _recommendedTopics = kConversationTopics;
 
@@ -51,7 +53,9 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
     super.initState();
     _setupCallsStream();
 
-    _featuredPastCallsSubscription = _db.streamFeaturedPastCalls().listen((calls) {
+    _featuredPastCallsSubscription = _db.streamFeaturedPastCalls().listen((
+      calls,
+    ) {
       if (mounted) setState(() => _featuredPastCalls = calls);
     });
   }
@@ -60,27 +64,45 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
     final liveCallsStream = _db.streamLiveCalls();
     final featuredUpcomingCallsStream = _db.streamUpcomingCalls();
 
-    _callsStreamSubscription = Rx.combineLatest2(
-      liveCallsStream,
-      featuredUpcomingCallsStream,
-      (List<CallModel> live, List<CallModel> upcoming) {
-        final allCalls = [...live, ...upcoming];
-        allCalls.sort((a, b) => b.startTime.compareTo(a.startTime));
-        return allCalls;
-      },
-    ).listen((calls) {
-      if (mounted) {
-        setState(() {
-          _liveCalls = calls.where((call) => call.isLive).toList();
-          _featuredUpcomingCalls = calls.where((call) => !call.isLive).toList();
+    _callsStreamSubscription =
+        Rx.combineLatest2(liveCallsStream, featuredUpcomingCallsStream, (
+          List<CallModel> live,
+          List<CallModel> upcoming,
+        ) {
+          final allCalls = [...live, ...upcoming];
+          allCalls.sort((a, b) => b.startTime.compareTo(a.startTime));
+          return allCalls;
+        }).listen((calls) {
+          if (mounted) {
+            final newLiveCalls = calls.where((call) => call.isLive).toList();
+            final newFeaturedUpcomingCalls = calls
+                .where((call) => !call.isLive)
+                .toList();
+
+            setState(() {
+              _liveCalls = newLiveCalls;
+              _featuredUpcomingCalls = newFeaturedUpcomingCalls;
+            });
+
+            // Determine if the ringtone should play.
+            final shouldRing = newLiveCalls.any((call) {
+              // Can't ring if user is not logged in.
+              if (_user == null) return false;
+              // User is either the host or the original caller.
+              final isUserInvolved =
+                  call.hostId == _user!.uid || call.callerId == _user!.uid;
+              // User is not already in this call.
+              final isNotInThisCall = CallStateService.activeCallId != call.id;
+              return isUserInvolved && isNotInThisCall;
+            });
+
+            if (shouldRing) {
+              RingtoneService.playRingtone();
+            } else {
+              RingtoneService.stopRingtone();
+            }
+          }
         });
-        if (_liveCalls.isNotEmpty) {
-          RingtoneService.playRingtone();
-        } else {
-          RingtoneService.stopRingtone();
-        }
-      }
-    });
   }
 
   late StreamSubscription _featuredPastCallsSubscription;
@@ -93,9 +115,11 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
       _user = user;
       _userUpcomingCallsSubscription?.cancel();
       if (_user != null) {
-        _userUpcomingCallsSubscription = _db.streamUserUpcomingCalls(_user!.uid).listen((calls) {
-          if (mounted) setState(() => _userUpcomingCalls = calls);
-        });
+        _userUpcomingCallsSubscription = _db
+            .streamUserUpcomingCalls(_user!.uid)
+            .listen((calls) {
+              if (mounted) setState(() => _userUpcomingCalls = calls);
+            });
       } else {
         if (mounted) setState(() => _userUpcomingCalls = []);
       }
@@ -122,7 +146,8 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
     for (var call in _userUpcomingCalls) {
       allCalls[call.channelName] = call;
     }
-    return allCalls.values.toList()..sort((a, b) => a.startTime.compareTo(b.startTime));
+    return allCalls.values.toList()
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
   }
 
   @override
@@ -137,55 +162,80 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
           headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
             return <Widget>[
               SliverAppBar(
-                title: Text(
-                  'Eavesdrop',
-                  style: textTheme.headlineMedium!.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                bottom: PreferredSize(
-                  preferredSize: Size.fromHeight(_user != null ? 250.0 : 206.0),
-                  child: Column(
-                    children: [
-                      SizedBox(height: 48.0, child: _buildMenuButtons(_user)),
-                      const SizedBox(height: 8),
-                      SizedBox(height: 44, child: _buildFilterChips()),
-                      const SizedBox(height: 8),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: (value) => setState(() => _searchQuery = value),
-                          decoration: InputDecoration(
-                            hintText: 'Search topic, mood, host, date…',
-                            prefixIcon: const Icon(Icons.search),
-                            suffixIcon: _searchQuery.isNotEmpty
-                                ? IconButton(
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() => _searchQuery = '');
-                                    },
-                                    icon: const Icon(Icons.close),
-                                  )
-                                : null,
-                            filled: true,
-                            fillColor: const Color(0xFF1A1A1A),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
+                title: _isMenuOpen
+                    ? null
+                    : Text(
+                        "Eavesdrop",
+                        style: textTheme.headlineMedium!.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
                         ),
                       ),
-                      if (_user != null) ...[
-                        const SizedBox(height: 8),
-                        SizedBox(height: 40, child: _buildTopicFollowChips()),
-                      ],
-                      const SizedBox(height: 8),
-                    ],
+                actions: [
+                  IconButton(
+                    icon: Icon(_isMenuOpen ? Icons.close : Icons.menu_rounded),
+                    onPressed: () {
+                      setState(() {
+                        _isMenuOpen = !_isMenuOpen;
+                      });
+                    },
                   ),
-                ),
+                ],
+                bottom: _isMenuOpen
+                    ? PreferredSize(
+                        preferredSize: Size.fromHeight(
+                          _user != null ? 250.0 : 206.0,
+                        ),
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              height: 48.0,
+                              child: _buildMenuButtons(_user),
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(height: 44, child: _buildFilterChips()),
+                            const SizedBox(height: 8),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: TextField(
+                                controller: _searchController,
+                                onChanged: (value) =>
+                                    setState(() => _searchQuery = value),
+                                decoration: InputDecoration(
+                                  hintText: 'Search topic, mood, host, date…',
+                                  prefixIcon: const Icon(Icons.search),
+                                  suffixIcon: _searchQuery.isNotEmpty
+                                      ? IconButton(
+                                          onPressed: () {
+                                            _searchController.clear();
+                                            setState(() => _searchQuery = '');
+                                          },
+                                          icon: const Icon(Icons.close),
+                                        )
+                                      : null,
+                                  filled: true,
+                                  fillColor: const Color(0xFF1A1A1A),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (_user != null) ...[
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                height: 40,
+                                child: _buildTopicFollowChips(),
+                              ),
+                            ],
+                            const SizedBox(height: 8),
+                          ],
+                        ),
+                      )
+                    : null,
                 backgroundColor: const Color(0xFF0D0D0D),
                 pinned: true,
                 floating: true,
@@ -202,19 +252,34 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
                   _buildSection(
                     context,
                     title: 'Live Now',
-                    calls: _applySearch(_applyPersonalization(_applyFilter(_liveCalls), userModel)),
+                    calls: _applySearch(
+                      _applyPersonalization(
+                        _applyFilter(_liveCalls),
+                        userModel,
+                      ),
+                    ),
                     emptyMessage: 'No live calls right now.',
                   ),
                   _buildSection(
                     context,
                     title: 'Upcoming',
-                    calls: _applySearch(_applyPersonalization(_applyFilter(_upcomingCalls), userModel)),
+                    calls: _applySearch(
+                      _applyPersonalization(
+                        _applyFilter(_upcomingCalls),
+                        userModel,
+                      ),
+                    ),
                     emptyMessage: 'No upcoming calls scheduled.',
                   ),
                   _buildSection(
                     context,
                     title: 'Featured Past Calls',
-                    calls: _applySearch(_applyPersonalization(_applyFilter(_featuredPastCalls), userModel)),
+                    calls: _applySearch(
+                      _applyPersonalization(
+                        _applyFilter(_featuredPastCalls),
+                        userModel,
+                      ),
+                    ),
                     emptyMessage: 'No featured past calls available.',
                   ),
                 ],
@@ -278,16 +343,24 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
     }).toList();
   }
 
-  List<CallModel> _applyPersonalization(List<CallModel> calls, UserModel? userModel) {
+  List<CallModel> _applyPersonalization(
+    List<CallModel> calls,
+    UserModel? userModel,
+  ) {
     if (userModel == null) return calls;
     final followedHosts = userModel.followedHostIds.toSet();
-    final followedTopics = userModel.followedTopics.map((e) => e.toLowerCase()).toSet();
+    final followedTopics = userModel.followedTopics
+        .map((e) => e.toLowerCase())
+        .toSet();
     final prioritized = [...calls]
       ..sort((a, b) {
         int score(CallModel call) {
           final hostScore = followedHosts.contains(call.hostId) ? 2 : 0;
-          final topicScore = followedTopics.any(
-                (topic) => call.title.toLowerCase().contains(topic) || (call.userMood?.toLowerCase().contains(topic) ?? false),
+          final topicScore =
+              followedTopics.any(
+                (topic) =>
+                    call.title.toLowerCase().contains(topic) ||
+                    (call.userMood?.toLowerCase().contains(topic) ?? false),
               )
               ? 1
               : 0;
@@ -343,11 +416,16 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
                 if (userModel.isAdmin || userModel.isSuperAdmin) {
                   return TextButton.icon(
                     icon: const Icon(Icons.dashboard, color: Colors.white),
-                    label: const Text('Admin', style: TextStyle(color: Colors.white)),
+                    label: const Text(
+                      'Admin',
+                      style: TextStyle(color: Colors.white),
+                    ),
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const AdminDashboard()),
+                        MaterialPageRoute(
+                          builder: (context) => const AdminDashboard(),
+                        ),
                       );
                     },
                   );
@@ -372,7 +450,9 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const FavoriteCallsScreen()),
+              MaterialPageRoute(
+                builder: (context) => const FavoriteCallsScreen(),
+              ),
             );
           },
         ),
@@ -382,7 +462,9 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const NotificationCenterScreen()),
+              MaterialPageRoute(
+                builder: (context) => const NotificationCenterScreen(),
+              ),
             );
           },
         ),
@@ -392,7 +474,9 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
           onPressed: () {
             if (user == null) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Please log in to see your calls.')),
+                const SnackBar(
+                  content: Text('Please log in to see your calls.'),
+                ),
               );
               return;
             }
@@ -409,7 +493,9 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const OnboardingScreen(),
+                ),
               );
             },
           )
@@ -430,7 +516,9 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
     return StreamBuilder<UserModel>(
       stream: _db.streamUser(_user!.uid),
       builder: (context, snapshot) {
-        final followed = (snapshot.data?.followedTopics ?? const <String>[]).map((e) => e.toLowerCase()).toSet();
+        final followed = (snapshot.data?.followedTopics ?? const <String>[])
+            .map((e) => e.toLowerCase())
+            .toSet();
         return ListView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -485,7 +573,11 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    const Icon(Icons.inbox_outlined, color: Colors.white38, size: 36),
+                    const Icon(
+                      Icons.inbox_outlined,
+                      color: Colors.white38,
+                      size: 36,
+                    ),
                     const SizedBox(height: 10),
                     Text(
                       emptyMessage,
@@ -498,16 +590,24 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
                         if (_user == null) {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+                            MaterialPageRoute(
+                              builder: (context) => const OnboardingScreen(),
+                            ),
                           );
                         } else {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const BookingScreen()),
+                            MaterialPageRoute(
+                              builder: (context) => const BookingScreen(),
+                            ),
                           );
                         }
                       },
-                      child: Text(_user == null ? 'Log in to book a call' : 'Book your first call'),
+                      child: Text(
+                        _user == null
+                            ? 'Log in to book a call'
+                            : 'Book your next call',
+                      ),
                     ),
                   ],
                 ),
@@ -518,41 +618,50 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (BuildContext context, int index) {
-                  final call = calls[index];
-                  return CallCard(
-                    call: call,
-                    onTap: () {
-                      if (call.isLive) {
-                        RingtoneService.stopRingtone();
-                        if (_user == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please log in to join a call.')),
-                          );
-                          return;
-                        }
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => LiveCallScreen(call: call)),
+              delegate: SliverChildBuilderDelegate((
+                BuildContext context,
+                int index,
+              ) {
+                final call = calls[index];
+                return CallCard(
+                  call: call,
+                  onTap: () {
+                    if (call.isLive) {
+                      RingtoneService.stopRingtone();
+                      if (_user == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please log in to join a call.'),
+                          ),
                         );
-                      } else {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => CallDetailsScreen(call: call)),
-                        );
+                        return;
                       }
-                    },
-                    onPlayRecording: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => CallDetailsScreen(call: call, autoplay: true)),
+                        MaterialPageRoute(
+                          builder: (context) => LiveCallScreen(call: call),
+                        ),
                       );
-                    },
-                  );
-                },
-                childCount: calls.length,
-              ),
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CallDetailsScreen(call: call),
+                        ),
+                      );
+                    }
+                  },
+                  onPlayRecording: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            CallDetailsScreen(call: call, autoplay: true),
+                      ),
+                    );
+                  },
+                );
+              }, childCount: calls.length),
             ),
           ),
       ],

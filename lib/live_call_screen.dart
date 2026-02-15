@@ -7,7 +7,9 @@ import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/models/user_model.dart';
 import 'package:eavesdrop/paywall_overlay.dart';
 import 'package:eavesdrop/services/agora_service.dart';
+import 'package:eavesdrop/services/call_state_service.dart';
 import 'package:eavesdrop/services/database_service.dart';
+import 'package:eavesdrop/services/ringtone_service.dart';
 import 'package:eavesdrop/services/storage_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -47,6 +49,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   void initState() {
     super.initState();
     _initialize();
+    CallStateService.activeCallId = widget.call.id;
   }
 
   Future<void> _initialize() async {
@@ -219,14 +222,14 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
   @override
   void dispose() {
-    _trialTimer?.cancel();
-    final user = Provider.of<User?>(context, listen: false);
-    if (user != null && _hasJoinedListeners) {
-      _db.leaveCallListeners(widget.call.id, user.uid);
-    }
     _agoraService.leaveChannel().then((_) {
       _agoraService.dispose();
     });
+    _trialTimer?.cancel();
+    if (CallStateService.activeCallId == widget.call.id) {
+      CallStateService.activeCallId = null;
+    }
+    RingtoneService.stopRingtone();
     super.dispose();
   }
 
