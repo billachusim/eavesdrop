@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:eavesdrop/models/call_model.dart';
@@ -335,7 +336,7 @@ class _CallCardState extends State<CallCard>
 
     await db.hideReportAndBlockCallOwner(uid: currentUser.uid, call: widget.call);
 
-    if (!mounted) return;
+    if (!mounted || !context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -408,99 +409,206 @@ class _CallCardState extends State<CallCard>
 
   Widget _buildPastCallFooter(bool hasRecording) {
     if (hasRecording && widget.onPlayRecording != null) {
-      return SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: widget.onPlayRecording,
-          icon: const Icon(Icons.play_arrow_rounded),
-          label: Text(
-            "Record is available.",
-            style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
-          ),
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withValues(alpha: 0.16),
+                  Colors.white.withValues(alpha: 0.06),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              border: Border.all(
+                color: Colors.white.withValues(alpha:0.22),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha:0.22),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-            textStyle: GoogleFonts.inter(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
+            child: ElevatedButton.icon(
+              onPressed: widget.onPlayRecording,
+              icon: const Icon(Icons.play_arrow_rounded, size: 20),
+              label: Text(
+                "Recording available",
+                style: GoogleFonts.inter(
+                  color: Colors.white.withValues(alpha:0.9),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                elevation: 0,
+                shadowColor: Colors.transparent,
+                backgroundColor: Colors.transparent,
+                foregroundColor: Colors.white.withValues(alpha:0.9),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                textStyle: GoogleFonts.inter(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
             ),
           ),
         ),
       );
     }
-    return Text(
-      "No recording on this conversation.",
-      style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            color: Colors.white.withValues(alpha:0.06),
+            border: Border.all(color: Colors.white.withValues(alpha:0.14)),
+          ),
+          child: Text(
+            "No recording for this conversation.",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              color: Colors.white.withValues(alpha:0.7),
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildUpcomingCallFooter(
       BuildContext context, User? user, DatabaseService db) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: () async {
-          if (user == null) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(
-                  const SnackBar(content: Text('Please log in to set reminders.')));
-            return;
-          }
-
-          if (_isReminderSet) {
-            // --- Remove Reminder ---
-            await db.removeReminder(widget.call.id, user.uid);
-            if (mounted) {
-              setState(() {
-                _isReminderSet = false;
-                ScaffoldMessenger.of(context)
-                  ..hideCurrentSnackBar()
-                  ..showSnackBar(const SnackBar(
-                    content: Text('Reminder removed.'),
-                    backgroundColor: Colors.red,
-                  ));
-              });
-            }
-          } else {
-            // --- Set Reminder ---
-            await db.setReminder(widget.call.id, user.uid);
-            await Add2Calendar.addEvent2Cal(_createCalendarEvent());
-            if (mounted) {
-              setState(() {
-                _isReminderSet = true;
-                ScaffoldMessenger.of(context)
-                  ..hideCurrentSnackBar()
-                  ..showSnackBar(const SnackBar(
-                    content: Text('Reminder set and added to calendar!'),
-                    backgroundColor: Colors.green,
-                  ));
-              });
-            }
-          }
-        },
-        icon: Icon(
-          _isReminderSet
-              ? Icons.notifications_active
-              : Icons.notifications_active_outlined,
-          color: _isReminderSet ? Colors.yellow.shade700 : Colors.white,
-        ),
-        label: Text(_isReminderSet ? "Reminder Set" : "Remind Me"),
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          backgroundColor:
-          _isReminderSet ? const Color(0xFF4d481a) : const Color(0xFF2D2D2D),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              colors: _isReminderSet
+                  ? [
+                const Color(0xFFFFD54F).withValues(alpha:0.20),
+                const Color(0xFFFFB300).withValues(alpha:0.08),
+              ]
+                  : [
+                Colors.white.withValues(alpha:0.16),
+                Colors.white.withValues(alpha:0.06),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(
+              color: _isReminderSet
+                  ? const Color(0xFFFFD54F).withValues(alpha:0.35)
+                  : Colors.white.withValues(alpha:0.22),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha:0.22),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-          textStyle: GoogleFonts.inter(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
+          child: ElevatedButton.icon(
+            onPressed: () async {
+              if (user == null) {
+                ScaffoldMessenger.of(context)
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(
+                    const SnackBar(
+                      content: Text('Please log in to set reminders.'),
+                    ),
+                  );
+                return;
+              }
+
+              if (_isReminderSet) {
+                // --- Remove Reminder ---
+                await db.removeReminder(widget.call.id, user.uid);
+                if (mounted) {
+                  setState(() {
+                    _isReminderSet = false;
+                    ScaffoldMessenger.of(context)
+                      ..hideCurrentSnackBar()
+                      ..showSnackBar(
+                        const SnackBar(
+                          content: Text('Reminder removed.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                  });
+                }
+              } else {
+                // --- Set Reminder ---
+                await db.setReminder(widget.call.id, user.uid);
+                await Add2Calendar.addEvent2Cal(_createCalendarEvent());
+                if (mounted) {
+                  setState(() {
+                    _isReminderSet = true;
+                    ScaffoldMessenger.of(context)
+                      ..hideCurrentSnackBar()
+                      ..showSnackBar(
+                        const SnackBar(
+                          content: Text('Reminder set and added to calendar!'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                  });
+                }
+              }
+            },
+            icon: Icon(
+              _isReminderSet
+                  ? Icons.notifications_active_rounded
+                  : Icons.notifications_active_outlined,
+              size: 20,
+              color: _isReminderSet
+                  ? const Color(0xFFFFD54F).withValues(alpha:0.95)
+                  : Colors.white.withValues(alpha:0.92),
+            ),
+            label: Text(
+              _isReminderSet ? "Reminder Set" : "Remind Me",
+              style: GoogleFonts.inter(
+                color: Colors.white.withValues(alpha:0.92),
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white.withValues(alpha:0.92),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              textStyle: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
           ),
         ),
       ),
