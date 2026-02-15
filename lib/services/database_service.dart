@@ -85,6 +85,28 @@ class DatabaseService {
     }
   }
 
+  Future<bool> deductCreditsIfEnough(String uid, int cost) async {
+    try {
+      final userDocRef = _db.collection('users').doc(uid);
+      return await _db.runTransaction((transaction) async {
+        final userSnapshot = await transaction.get(userDocRef);
+        final userData = userSnapshot.data();
+        final currentCredits = userData?['credits'] as int? ?? 0;
+
+        if (currentCredits < cost) {
+          return false;
+        }
+
+        transaction.update(userDocRef, {
+          'credits': FieldValue.increment(-cost),
+        });
+        return true;
+      });
+    } catch (e) {
+      return false;
+    }
+  }
+
   // Activate premium subscription
   Future<void> activatePremiumSubscription(String uid) async {
     try {

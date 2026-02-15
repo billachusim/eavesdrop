@@ -17,12 +17,12 @@ import '../services/database_service.dart';
 
 class BookingDetailsScreen extends StatefulWidget {
   final BookingService booking;
-  final List<UserModel> hosts;
+  final UserModel selectedHost;
 
   const BookingDetailsScreen({
     super.key,
     required this.booking,
-    required this.hosts,
+    required this.selectedHost,
   });
 
   @override
@@ -34,19 +34,10 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   final _titleController = TextEditingController();
   final _locationController = TextEditingController();
   String? _selectedMood;
-  UserModel? _selectedHost;
   bool _isPrivate = false;
   var uuid = const Uuid();
   bool _isLoading = false;
   final List<String> _moods = kMoodOptions;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.hosts.isNotEmpty) {
-      _selectedHost = widget.hosts.first;
-    }
-  }
 
   @override
   void dispose() {
@@ -89,13 +80,6 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     if (user == null) {
       messenger.showSnackBar(
         const SnackBar(content: Text('Error: You are not logged in.')),
-      );
-      return;
-    }
-
-    if (_selectedHost == null) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Error: Please select a personality.')),
       );
       return;
     }
@@ -168,16 +152,16 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
         title: _titleController.text,
         mood: _selectedMood,
         location: _locationController.text,
-        personalityId: _selectedHost!.uid,
-        personalityAvatar: _selectedHost!.photoURL,
+        personalityId: widget.selectedHost.uid,
+        personalityAvatar: widget.selectedHost.photoURL,
         isPrivate: _isPrivate,
       );
 
       // 2. Create the CallModel instance
       final call = CallModel(
         id: channelId,
-        hostId: _selectedHost!.uid,
-        hostName: _selectedHost!.displayName ?? 'No name',
+        hostId: widget.selectedHost.uid,
+        hostName: widget.selectedHost.displayName ?? 'No name',
         callerId: user.uid,
         isPrivate: _isPrivate,
         isLive: false,
@@ -187,7 +171,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
         title: _titleController.text,
         userNickname: nickname,
         userPhotoURL: photoURL,
-        personalityAvatar: _selectedHost!.photoURL ?? '',
+        personalityAvatar: widget.selectedHost.photoURL ?? '',
         userLocation: _locationController.text.isNotEmpty
             ? _locationController.text
             : null,
@@ -358,32 +342,49 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Choose a personality to talk to:',
+                  const Text('Selected host:',
                       style: TextStyle(color: Colors.white)),
                   const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8.0,
-                    children: widget.hosts.map((host) {
-                      return ChoiceChip(
-                        label: Text(host.displayName ?? 'No name',
-                            style: const TextStyle(color: Colors.white)),
-                        avatar: host.photoURL != null
-                            ? CircleAvatar(
-                                backgroundImage: NetworkImage(host.photoURL!),
-                              )
-                            : null,
-                        selected: _selectedHost?.uid == host.uid,
-                        onSelected: (selected) {
-                          setState(() {
-                            if (selected) {
-                              _selectedHost = host;
-                            }
-                          });
-                        },
-                        backgroundColor: Colors.white.withValues(alpha:0.2),
-                        selectedColor: Colors.deepPurple,
-                      );
-                    }).toList(),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundImage: widget.selectedHost.photoURL != null &&
+                                  widget.selectedHost.photoURL!.isNotEmpty
+                              ? NetworkImage(widget.selectedHost.photoURL!)
+                              : null,
+                          child: (widget.selectedHost.photoURL == null ||
+                                  widget.selectedHost.photoURL!.isEmpty)
+                              ? const Icon(Icons.person)
+                              : null,
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.selectedHost.displayName ?? 'Host',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const Text(
+                              'Chosen on previous step',
+                              style: TextStyle(color: Colors.white60, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Card(

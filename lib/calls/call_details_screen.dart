@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:eavesdrop/booking/booking_screen.dart';
@@ -5,6 +7,7 @@ import 'package:eavesdrop/credits_screen.dart';
 import 'package:eavesdrop/host_profile_screen.dart';
 import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/models/user_model.dart';
+import 'package:eavesdrop/services/ai_summary_service.dart';
 import 'package:eavesdrop/services/database_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -28,10 +31,19 @@ class CallDetailsScreen extends StatefulWidget {
 
 class _CallDetailsScreenState extends State<CallDetailsScreen> {
   final DatabaseService _db = DatabaseService();
+  final AiSummaryService _summaryService = AiSummaryService();
   final AudioPlayer _audioPlayer = AudioPlayer();
+  static const int _unlockCost = 20;
+  static const Duration _freePreview = Duration(minutes: 1);
+
   bool _isPlaying = false;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
+  bool _audioUnlocked = false;
+  bool _summaryUnlocked = false;
+  bool _isPromptingAudioUnlock = false;
+  bool _isLoadingSummary = false;
+  String? _summaryText;
 
   @override
   void initState() {
@@ -39,10 +51,36 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
     if (widget.call.recordingUrl != null &&
         widget.call.recordingUrl!.isNotEmpty) {
       _initAudioPlayer();
+      _loadSummary();
       if (widget.autoplay) {
         _audioPlayer.play(UrlSource(widget.call.recordingUrl!));
       }
     }
+  }
+
+  Future<void> _loadSummary() async {
+    if (widget.call.recordingUrl == null || widget.call.recordingUrl!.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingSummary = true;
+    });
+
+    final summary = await _summaryService.getSummary(
+      callId: widget.call.id,
+      recordingUrl: widget.call.recordingUrl!,
+      callTitle: widget.call.title,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _summaryText = summary;
+      _isLoadingSummary = false;
+    });
   }
 
   void _initAudioPlayer() {
@@ -53,8 +91,120 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
       if (mounted) setState(() => _duration = newDuration);
     });
     _audioPlayer.onPositionChanged.listen((newPosition) {
-      if (mounted) setState(() => _position = newPosition);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() => _position = newPosition);
+      if (!_audioUnlocked &&
+          !_isPromptingAudioUnlock &&
+          newPosition >= _freePreview &&
+          _isPlaying) {
+        _audioPlayer.pause();
+        _showAudioUnlockPrompt();
+      }
     });
+  }
+
+  Future<void> _showAudioUnlockPrompt() async {
+    _isPromptingAudioUnlock = true;
+    final unlocked = await _requestCreditUnlock(
+      featureName: 'continue listening',
+      title: 'Continue listening?',
+      description:
+          'You listened to the free first minute. Unlock the remaining recording for $_unlockCost credits.',
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (unlocked) {
+      setState(() {
+        _audioUnlocked = true;
+      });
+      await _audioPlayer.resume();
+    }
+
+    _isPromptingAudioUnlock = false;
+  }
+
+  Future<bool> _requestCreditUnlock({
+    required String featureName,
+    required String title,
+    required String description,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return false;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(description),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Not now'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Pay $_unlockCost credits'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return false;
+    }
+
+    final didDeduct = await _db.deductCreditsIfEnough(user.uid, _unlockCost);
+    if (!mounted) {
+      return false;
+    }
+
+    if (!didDeduct) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Not enough credits. Please top up to continue.')),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const CreditsScreen()),
+      );
+      return false;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$_unlockCost credits deducted for $featureName.')),
+    );
+    return true;
+  }
+
+  String get _summaryFirstSentence {
+    final summary = _summaryText?.trim() ?? '';
+    if (summary.isEmpty) {
+      return '';
+    }
+    final index = summary.indexOf('. ');
+    if (index == -1) {
+      return summary;
+    }
+    return summary.substring(0, index + 1);
+  }
+
+  String get _summaryRemainingText {
+    final summary = _summaryText?.trim() ?? '';
+    if (summary.isEmpty) {
+      return '';
+    }
+    final first = _summaryFirstSentence;
+    if (summary.length <= first.length) {
+      return '';
+    }
+    return summary.substring(first.length).trim();
   }
 
   @override
@@ -133,6 +283,8 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
                     _buildAudioPlayer(textTheme)
                   else
                     _buildNoRecordingAvailable(textTheme),
+                  const SizedBox(height: 16),
+                  _buildAiSummary(textTheme),
                   const SizedBox(height: 20),
                   _buildPostCallUpsell(),
                 ],
@@ -422,7 +574,11 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
               if (_isPlaying) {
                 await _audioPlayer.pause();
               } else {
-                await _audioPlayer.play(UrlSource(widget.call.recordingUrl!));
+                if (!_audioUnlocked && _position >= _freePreview) {
+                  await _showAudioUnlockPrompt();
+                } else {
+                  await _audioPlayer.play(UrlSource(widget.call.recordingUrl!));
+                }
               }
             },
           ),
@@ -449,6 +605,92 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
             ),
           ],
         ));
+  }
+
+  Widget _buildAiSummary(TextTheme textTheme) {
+    final firstSentence = _summaryFirstSentence;
+    final remainingText = _summaryRemainingText;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161616),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome, color: Colors.amberAccent),
+              const SizedBox(width: 8),
+              Text(
+                'AI Summary',
+                style: textTheme.titleMedium!.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_isLoadingSummary)
+            const Center(child: CircularProgressIndicator())
+          else if ((_summaryText ?? '').isEmpty)
+            Text(
+              'Summary unavailable right now.',
+              style: textTheme.bodyMedium!.copyWith(color: Colors.white60),
+            )
+          else ...[
+            Text(
+              firstSentence,
+              style: textTheme.bodyLarge!.copyWith(color: Colors.white),
+            ),
+            if (remainingText.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              if (_summaryUnlocked)
+                Text(
+                  remainingText,
+                  style: textTheme.bodyMedium!.copyWith(color: Colors.white70),
+                )
+              else
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ImageFiltered(
+                      imageFilter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                      child: Text(
+                        remainingText,
+                        style: textTheme.bodyMedium!.copyWith(color: Colors.white54),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        final unlocked = await _requestCreditUnlock(
+                          featureName: 'viewing full summary',
+                          title: 'Unlock full summary?',
+                          description:
+                              'Read the complete AI summary for $_unlockCost credits.',
+                        );
+                        if (unlocked && mounted) {
+                          setState(() {
+                            _summaryUnlocked = true;
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.lock_open_outlined),
+                      label: const Text('Unlock full summary (20 credits)'),
+                    ),
+                  ],
+                ),
+            ],
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _listenerStrip() {
