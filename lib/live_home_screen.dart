@@ -15,6 +15,7 @@ import 'package:eavesdrop/services/call_state_service.dart';
 import 'package:eavesdrop/services/database_service.dart';
 import 'package:eavesdrop/services/ringtone_service.dart';
 import 'package:eavesdrop/widgets/call_card.dart';
+import 'package:eavesdrop/widgets/settings_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -445,30 +446,6 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
           },
         ),
         TextButton.icon(
-          icon: const Icon(Icons.bookmark, color: Colors.white),
-          label: const Text('Saved', style: TextStyle(color: Colors.white)),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const FavoriteCallsScreen(),
-              ),
-            );
-          },
-        ),
-        TextButton.icon(
-          icon: const Icon(Icons.notifications_none, color: Colors.white),
-          label: const Text('Alerts', style: TextStyle(color: Colors.white)),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const NotificationCenterScreen(),
-              ),
-            );
-          },
-        ),
-        TextButton.icon(
           icon: const Icon(Icons.call, color: Colors.white),
           label: const Text('My Calls', style: TextStyle(color: Colors.white)),
           onPressed: () {
@@ -486,27 +463,25 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
             );
           },
         ),
-        if (user == null)
-          TextButton.icon(
-            icon: const Icon(Icons.login, color: Colors.white),
-            label: const Text('Login', style: TextStyle(color: Colors.white)),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const OnboardingScreen(),
-                ),
-              );
-            },
-          )
-        else
-          TextButton.icon(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            label: const Text('Logout', style: TextStyle(color: Colors.white)),
-            onPressed: () async {
-              await AuthService().signOut();
-            },
-          ),
+        TextButton.icon(
+          icon: const Icon(Icons.bookmark, color: Colors.white),
+          label: const Text('Saved', style: TextStyle(color: Colors.white)),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const FavoriteCallsScreen(),
+              ),
+            );
+          },
+        ),
+        TextButton.icon(
+          icon: const Icon(Icons.settings_outlined),
+          label: const Text('Settings', style: TextStyle(color: Colors.white)),
+          onPressed: () {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsPage()));
+          },
+        ),
       ],
     );
   }

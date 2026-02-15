@@ -22,13 +22,17 @@ class AiSummaryService {
       return cached;
     }
 
-    final fetched = await _fetchFromElevenLabs(recordingUrl: recordingUrl, callTitle: callTitle);
-    final summary = fetched ??
-        'This conversation covers "$callTitle" with practical reflections and actionable next steps.';
+    final fetched = await _fetchFromElevenLabs(
+        recordingUrl: recordingUrl, callTitle: callTitle);
 
-    await prefs.setString(cacheKey, summary);
-    return summary;
+    if (fetched != null) {
+      await prefs.setString(cacheKey, fetched);
+      return fetched;
+    } else {
+      return 'This conversation covers "$callTitle" with practical reflections and actionable next steps.';
+    }
   }
+
 
   Future<String?> _fetchFromElevenLabs({
     required String recordingUrl,

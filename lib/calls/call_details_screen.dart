@@ -627,7 +627,7 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
               const Icon(Icons.auto_awesome, color: Colors.amberAccent),
               const SizedBox(width: 8),
               Text(
-                'AI Summary',
+                'Call Summary',
                 style: textTheme.titleMedium!.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
@@ -673,7 +673,7 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
                           featureName: 'viewing full summary',
                           title: 'Unlock full summary?',
                           description:
-                              'Read the complete AI summary for $_unlockCost credits.',
+                              'Read the complete summary of the conversation for $_unlockCost credits.',
                         );
                         if (unlocked && mounted) {
                           setState(() {

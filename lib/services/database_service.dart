@@ -1,7 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:eavesdrop/auth/onboarding_screen.dart';
 import 'package:eavesdrop/models/booking_model.dart';
 import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/models/user_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+
+import '../auth/auth_service.dart';
 
 class DatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -538,4 +544,23 @@ class DatabaseService {
       'read': false,
     });
   }
+
+
+  /// [delete] all users informations
+  void deleteUserAccount(BuildContext context, String userId) async {
+    await FirebaseAuth.instance.signOut();
+    final userId0 = userId;
+    final collection = FirebaseFirestore.instance
+        .collection('users');
+    await collection.doc(userId0).delete();
+    // Use pushAndRemoveUntil to clear the navigation stack
+    if (context.mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+            (Route<dynamic> route) => false,
+      );
+    }
+  }
+
 }
