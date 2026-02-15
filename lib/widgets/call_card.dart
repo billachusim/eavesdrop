@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
-import 'package:add_2_calendar/add_2_calendar.dart';import 'package:cached_network_image/cached_network_image.dart';
+import 'package:add_2_calendar/add_2_calendar.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/models/user_model.dart';
 import 'package:eavesdrop/services/database_service.dart';
@@ -225,6 +226,9 @@ class _CallCardState extends State<CallCard>
 
   Widget _buildTopRow(BuildContext context, User? currentUser,
       DatabaseService db, bool isUpcoming, UserModel? callUser) {
+    final isCallOwner =
+        currentUser != null && widget.call.callerId == currentUser.uid;
+
     return Row(
       children: [
         if (widget.call.isLive)
@@ -244,34 +248,103 @@ class _CallCardState extends State<CallCard>
           StreamBuilder<UserModel>(
             stream: db.streamUser(currentUser.uid),
             builder: (context, snapshot) {
-              if (snapshot.hasData &&
-                  (snapshot.data!.isAdmin || snapshot.data!.isSuperAdmin)) {
-                return IconButton(
-                  icon: Icon(
-                    widget.call.isFeatured ? Icons.star : Icons.star_border,
-                    color: widget.call.isFeatured
-                        ? Colors.yellow.shade700
-                        : Colors.white54,
+              final isAdmin = snapshot.hasData &&
+                  (snapshot.data!.isAdmin || snapshot.data!.isSuperAdmin);
+
+              final actions = <Widget>[
+                IconButton(
+                  icon: const Icon(Icons.bookmark_border, color: Colors.white70),
+                  onPressed: () async {
+                    await db.favoriteCall(currentUser.uid, widget.call);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Saved call.')),
+                      );
+                    }
+                  },
+                ),
+              ];
+
+              if (isAdmin) {
+                actions.add(
+                  IconButton(
+                    icon: Icon(
+                      widget.call.isFeatured ? Icons.star : Icons.star_border,
+                      color: widget.call.isFeatured
+                          ? Colors.yellow.shade700
+                          : Colors.white54,
+                    ),
+                    onPressed: () => db.toggleFeaturedCall(
+                      widget.call.id,
+                      !widget.call.isFeatured,
+                    ),
                   ),
-                  onPressed: () => db.toggleFeaturedCall(
-                      widget.call.id, !widget.call.isFeatured),
                 );
               }
-              return IconButton(
-                icon: const Icon(Icons.bookmark_border, color: Colors.white70),
-                onPressed: () async {
-                  await db.favoriteCall(currentUser.uid, widget.call);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Saved call.')),
-                    );
-                  }
-                },
-              );
+
+              if (!isCallOwner) {
+                actions.add(
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_horiz, color: Colors.white60),
+                    color: const Color(0xFF1F1F1F),
+                    onSelected: (_) =>
+                        _handleModerationAction(context, currentUser, db),
+                    itemBuilder: (context) => const [
+                      PopupMenuItem<String>(
+                        value: 'hide_report_block',
+                        child: Text('Hide, report & block user'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return Row(mainAxisSize: MainAxisSize.min, children: actions);
             },
           ),
       ],
     );
+  }
+
+  Future<void> _handleModerationAction(
+    BuildContext context,
+    User currentUser,
+    DatabaseService db,
+  ) async {
+    final shouldModerate = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Hide and report this call?'),
+          content: const Text(
+            'This will hide the call from your feed, report the host, and block this host from your feed.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Confirm'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldModerate != true) return;
+
+    await db.hideReportAndBlockCallOwner(uid: currentUser.uid, call: widget.call);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Call hidden. Host reported and blocked.'),
+        ),
+      );
   }
 
   Widget _buildLiveBadge() {

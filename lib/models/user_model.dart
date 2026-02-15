@@ -14,6 +14,8 @@ class UserModel {
   final String? photoURL;
   final List<String> followedHostIds;
   final List<String> followedTopics;
+  final List<String> hiddenCallIds;
+  final List<String> blockedUserIds;
 
   UserModel({
     required this.uid,
@@ -29,6 +31,8 @@ class UserModel {
     this.photoURL,
     this.followedHostIds = const [],
     this.followedTopics = const [],
+    this.hiddenCallIds = const [],
+    this.blockedUserIds = const [],
   });
 
   factory UserModel.fromMap(Map<String, dynamic> data, String documentId) {
@@ -46,6 +50,8 @@ class UserModel {
       photoURL: data['photoURL'] as String?,
       followedHostIds: List<String>.from(data['followedHostIds'] ?? const []),
       followedTopics: List<String>.from(data['followedTopics'] ?? const []),
+      hiddenCallIds: List<String>.from(data['hiddenCallIds'] ?? const []),
+      blockedUserIds: List<String>.from(data['blockedUserIds'] ?? const []),
     );
   }
 
@@ -63,6 +69,8 @@ class UserModel {
       'photoURL': photoURL,
       'followedHostIds': followedHostIds,
       'followedTopics': followedTopics,
+      'hiddenCallIds': hiddenCallIds,
+      'blockedUserIds': blockedUserIds,
     };
   }
 }

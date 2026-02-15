@@ -254,8 +254,11 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
                     context,
                     title: 'Live Now',
                     calls: _applySearch(
-                      _applyPersonalization(
-                        _applyFilter(_liveCalls),
+                      _applySafetyFilters(
+                        _applyPersonalization(
+                          _applyFilter(_liveCalls),
+                          userModel,
+                        ),
                         userModel,
                       ),
                     ),
@@ -265,8 +268,11 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
                     context,
                     title: 'Upcoming',
                     calls: _applySearch(
-                      _applyPersonalization(
-                        _applyFilter(_upcomingCalls),
+                      _applySafetyFilters(
+                        _applyPersonalization(
+                          _applyFilter(_upcomingCalls),
+                          userModel,
+                        ),
                         userModel,
                       ),
                     ),
@@ -276,8 +282,11 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
                     context,
                     title: 'Featured Past Calls',
                     calls: _applySearch(
-                      _applyPersonalization(
-                        _applyFilter(_featuredPastCalls),
+                      _applySafetyFilters(
+                        _applyPersonalization(
+                          _applyFilter(_featuredPastCalls),
+                          userModel,
+                        ),
                         userModel,
                       ),
                     ),
@@ -331,6 +340,21 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
       case HomeFeedFilter.all:
         return calls;
     }
+  }
+
+  List<CallModel> _applySafetyFilters(
+    List<CallModel> calls,
+    UserModel? userModel,
+  ) {
+    if (userModel == null) return calls;
+
+    final hiddenCallIds = userModel.hiddenCallIds.toSet();
+    final blockedUserIds = userModel.blockedUserIds.toSet();
+
+    return calls
+        .where((call) => !hiddenCallIds.contains(call.id))
+        .where((call) => !blockedUserIds.contains(call.callerId))
+        .toList();
   }
 
   List<CallModel> _applySearch(List<CallModel> calls) {
