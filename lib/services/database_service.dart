@@ -449,6 +449,32 @@ class DatabaseService {
     }, SetOptions(merge: true));
   }
 
+  Future<void> hideReportAndBlockCallOwner({
+    required String uid,
+    required CallModel call,
+  }) async {
+    final userRef = _db.collection('users').doc(uid);
+    final reportRef = _db.collection('ugcReports').doc();
+
+    final batch = _db.batch();
+    batch.set(userRef, {
+      'hiddenCallIds': FieldValue.arrayUnion([call.id]),
+      'blockedUserIds': FieldValue.arrayUnion([call.callerId]),
+    }, SetOptions(merge: true));
+
+    batch.set(reportRef, {
+      'reporterUid': uid,
+      'callId': call.id,
+      'ownerUid': call.callerId,
+      'channelName': call.channelName,
+      'createdAt': FieldValue.serverTimestamp(),
+      'status': 'open',
+      'type': 'call_owner_report',
+    });
+
+    await batch.commit();
+  }
+
   Future<void> unfavoriteCall(String uid, String callId) async {
     await _db
         .collection('users')
