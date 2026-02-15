@@ -41,6 +41,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
 
   @override
   void dispose() {
+    FocusScope.of(context).unfocus();
     _titleController.dispose();
     _locationController.dispose();
     super.dispose();
@@ -68,6 +69,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   }
 
   Future<dynamic> saveAndUploadBooking() async {
+    FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) {
       return;
     }
