@@ -1,6 +1,8 @@
 import 'package:eavesdrop/services/database_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../auth/auth_service.dart';
 import '../auth/onboarding_screen.dart';
@@ -17,6 +19,18 @@ class _SettingsPageState extends State<SettingsPage> {
   final DatabaseService _firebaseServices = DatabaseService();
   final User? currentUser = FirebaseAuth.instance.currentUser;
 
+
+  void _launchDeletionPolicy() async {
+    final Uri url = Uri.parse("https://sites.google.com/view/claire-diary/delete-your-dear-claire-account?authuser=0");
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the policy page.')),
+      );
+    }
+  }
 
 
   void _confirmAndDeleteAccount() {
@@ -104,6 +118,20 @@ class _SettingsPageState extends State<SettingsPage> {
             leading: const Icon(Icons.delete_forever, color: Colors.red),
             title: const Text('Delete Account', style: TextStyle(color: Colors.red)),
             onTap: _confirmAndDeleteAccount,
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0, left: 16.0, right: 16.0),
+            child: RichText(
+              text: TextSpan(
+                text: 'Review and confirm data deletion.',
+                style: const TextStyle(
+                  color: Colors.blue,
+                  decoration: TextDecoration.underline,
+                ),
+                recognizer: TapGestureRecognizer()
+                  ..onTap = _launchDeletionPolicy,
+              ),
+            ),
           ),
         ],
       ),
