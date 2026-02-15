@@ -773,27 +773,6 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
         _interactionControls(context, user),
 
         const SizedBox(height: 12),
-
-        if (_isBroadcaster)
-          ElevatedButton.icon(
-            onPressed: () {
-              setState(() {
-                _isMuted = !_isMuted;
-                _agoraService.muteLocalAudioStream(_isMuted);
-              });
-            },
-            icon: Icon(_isMuted ? Icons.mic_off : Icons.mic),
-            label: Text(_isMuted ? "Unmute" : "Mute"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1C1C1C),
-              foregroundColor: Colors.white,
-              minimumSize: const Size(double.infinity, 54),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-          ),
-        const SizedBox(height: 12),
         if (isPrivilegedUser) ...[
           ElevatedButton(
             onPressed: () async {

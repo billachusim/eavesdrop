@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:add_2_calendar/add_2_calendar.dart';import 'package:cached_network_image/cached_network_image.dart';
 import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/models/user_model.dart';
 import 'package:eavesdrop/services/database_service.dart';
@@ -26,10 +26,12 @@ class CallCard extends StatefulWidget {
   State<CallCard> createState() => _CallCardState();
 }
 
-class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin {
+class _CallCardState extends State<CallCard>
+    with SingleTickerProviderStateMixin {
   Timer? _timer;
   Duration? _timeUntilLive;
   late AnimationController _pulseController;
+  bool _isReminderSet = false;
 
   @override
   void initState() {
@@ -44,7 +46,8 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
     if (widget.call.isLive) {
       _pulseController.repeat(reverse: true);
     } else if (widget.call.startTime.toDate().isAfter(DateTime.now())) {
-      _timeUntilLive = widget.call.startTime.toDate().difference(DateTime.now());
+      _timeUntilLive =
+          widget.call.startTime.toDate().difference(DateTime.now());
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (!mounted) return;
         setState(() {
@@ -55,6 +58,20 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
           }
         });
       });
+      _checkIfReminderIsSet();
+    }
+  }
+
+  void _checkIfReminderIsSet() async {
+    final user = context.read<User?>();
+    if (user != null) {
+      final db = DatabaseService();
+      final isSet = await db.isReminderSet(widget.call.id, user.uid);
+      if (mounted) {
+        setState(() {
+          _isReminderSet = isSet;
+        });
+      }
     }
   }
 
@@ -73,14 +90,29 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
     return '${_timeUntilLive!.inSeconds}s';
   }
 
+  Event _createCalendarEvent() {
+    return Event(
+      title: widget.call.title,
+      description: 'Reminder for the call: ${widget.call.title}',
+      location: 'Eavesdrop App',
+      startDate: widget.call.startTime.toDate(),
+      endDate: widget.call.endTime?.toDate() ??
+          widget.call.startTime.toDate().add(const Duration(hours: 1)),
+      allDay: false,
+      iosParams: const IOSParams(
+        reminder: Duration(minutes: 15),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<User?>(context);
     final db = DatabaseService();
     final bool hasRecording =
         widget.call.recordingUrl != null && widget.call.recordingUrl!.isNotEmpty;
-    final bool isUpcoming =
-        !widget.call.isLive && widget.call.startTime.toDate().isAfter(DateTime.now());
+    final bool isUpcoming = !widget.call.isLive &&
+        widget.call.startTime.toDate().isAfter(DateTime.now());
     final bool isPast = !widget.call.isLive && !isUpcoming;
 
     return StreamBuilder<UserModel>(
@@ -93,12 +125,15 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
               decoration: BoxDecoration(
                 color: const Color(0xFF1A1A1A),
                 borderRadius: BorderRadius.circular(22),
-                image: (userSnapshot.hasData && userSnapshot.data!.photoURL != null)
-                ? DecorationImage(
-                  image: CachedNetworkImageProvider(userSnapshot.data!.photoURL!),
-                  fit: BoxFit.cover,
-                  colorFilter: ColorFilter.mode(Colors.black.withAlpha(150), BlendMode.darken)
-                ) : null,
+                image: (userSnapshot.hasData &&
+                    userSnapshot.data!.photoURL != null)
+                    ? DecorationImage(
+                    image: CachedNetworkImageProvider(
+                        userSnapshot.data!.photoURL!),
+                    fit: BoxFit.cover,
+                    colorFilter: ColorFilter.mode(
+                        Colors.black.withAlpha(150), BlendMode.darken))
+                    : null,
                 border: Border.all(
                   color: widget.call.isLive
                       ? Colors.red.withAlpha(128)
@@ -107,35 +142,38 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
                 ),
                 boxShadow: widget.call.isLive
                     ? [
-                        BoxShadow(
-                          color: Colors.red.withAlpha(51),
-                          blurRadius: 25,
-                          spreadRadius: 2,
-                        )
-                      ]
+                  BoxShadow(
+                    color: Colors.red.withAlpha(51),
+                    blurRadius: 25,
+                    spreadRadius: 2,
+                  )
+                ]
                     : [
-                        BoxShadow(
-                          color: Colors.black.withAlpha(102),
-                          blurRadius: 15,
-                          spreadRadius: -5,
-                          offset: const Offset(0, 8),
-                        )
-                      ],
+                  BoxShadow(
+                    color: Colors.black.withAlpha(102),
+                    blurRadius: 15,
+                    spreadRadius: -5,
+                    offset: const Offset(0, 8),
+                  )
+                ],
               ),
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(22),
-                  gradient: LinearGradient(
-                    colors: [Colors.black.withAlpha(200), Colors.black.withAlpha(100)],
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                  )
-                ),
+                    borderRadius: BorderRadius.circular(22),
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withAlpha(200),
+                        Colors.black.withAlpha(100)
+                      ],
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                    )),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildTopRow(context, user, db, isUpcoming, userSnapshot.data),
+                    _buildTopRow(
+                        context, user, db, isUpcoming, userSnapshot.data),
                     const SizedBox(height: 18),
                     Text(
                       widget.call.title,
@@ -144,7 +182,9 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                         height: 1.3,
-                        shadows: [const Shadow(blurRadius: 10, color: Colors.black)],
+                        shadows: [
+                          const Shadow(blurRadius: 10, color: Colors.black)
+                        ],
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -163,13 +203,16 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
                         children: [
                           Chip(
                             label: Text(widget.call.userMood!),
-                            backgroundColor: Colors.white.withValues(alpha: 0.1),
+                            backgroundColor: Colors.white.withAlpha(25),
                           ),
                         ],
                       ),
                     ],
-                    const SizedBox(height: 24),
-                    if (isPast) _buildPastCallFooter(hasRecording),
+                    const SizedBox(height: 4),
+                    if (isPast)
+                      Align(
+                          alignment: Alignment.topLeft,
+                          child: _buildPastCallFooter(hasRecording)),
                     if (isUpcoming) _buildUpcomingCallFooter(context, user, db),
                     if (widget.call.isLive) _buildLiveCallFooter(),
                   ],
@@ -180,8 +223,8 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
         });
   }
 
-  Widget _buildTopRow(BuildContext context, User? currentUser, DatabaseService db,
-      bool isUpcoming, UserModel? callUser) {
+  Widget _buildTopRow(BuildContext context, User? currentUser,
+      DatabaseService db, bool isUpcoming, UserModel? callUser) {
     return Row(
       children: [
         if (widget.call.isLive)
@@ -192,10 +235,10 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
           _buildPastBadge(),
         const SizedBox(width: 10),
         if (callUser != null && callUser.photoURL != null)
-        CircleAvatar(
-          radius: 12,
-          backgroundImage: CachedNetworkImageProvider(callUser.photoURL!),
-        ),
+          CircleAvatar(
+            radius: 12,
+            backgroundImage: CachedNetworkImageProvider(callUser.photoURL!),
+          ),
         const Spacer(),
         if (currentUser != null)
           StreamBuilder<UserModel>(
@@ -210,8 +253,8 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
                         ? Colors.yellow.shade700
                         : Colors.white54,
                   ),
-                  onPressed: () =>
-                      db.toggleFeaturedCall(widget.call.id, !widget.call.isFeatured),
+                  onPressed: () => db.toggleFeaturedCall(
+                      widget.call.id, !widget.call.isFeatured),
                 );
               }
               return IconButton(
@@ -239,7 +282,12 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
         decoration: BoxDecoration(
           color: Colors.red,
           borderRadius: BorderRadius.circular(8),
-          boxShadow: [BoxShadow(color: Colors.red.withAlpha(150), blurRadius: 15, spreadRadius: 2)],
+          boxShadow: [
+            BoxShadow(
+                color: Colors.red.withAlpha(150),
+                blurRadius: 15,
+                spreadRadius: 2)
+          ],
         ),
         child: Text(
           "LIVE",
@@ -289,24 +337,27 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
 
   Widget _buildPastCallFooter(bool hasRecording) {
     if (hasRecording && widget.onPlayRecording != null) {
-      return SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: widget.onPlayRecording,
-          icon: const Icon(Icons.play_arrow_rounded),
-          label: const Text("Play Recording"),
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+      return Align(
+        alignment: Alignment.topLeft,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Text(
+              "Record is available.",
+              style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
             ),
-            textStyle: GoogleFonts.inter(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
+            SizedBox(
+              width: 50,
+              child: IconButton(
+                icon: const Icon(Icons.play_circle_filled),
+                iconSize: 50,
+                color: Colors.white,
+                onPressed: widget.onPlayRecording,
+              ),
             ),
-          ),
+          ],
         ),
       );
     }
@@ -321,27 +372,57 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
-        onPressed: () {
-          if (user != null) {
-            db.setReminder(widget.call.id, user.uid);
+        onPressed: () async {
+          if (user == null) {
             ScaffoldMessenger.of(context)
               ..hideCurrentSnackBar()
-              ..showSnackBar(const SnackBar(
-                content: Text('Reminder set!'),
-                backgroundColor: Colors.green,
-              ));
+              ..showSnackBar(
+                  const SnackBar(content: Text('Please log in to set reminders.')));
+            return;
+          }
+
+          if (_isReminderSet) {
+            // --- Remove Reminder ---
+            await db.removeReminder(widget.call.id, user.uid);
+            if (mounted) {
+              setState(() {
+                _isReminderSet = false;
+                ScaffoldMessenger.of(context)
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(const SnackBar(
+                    content: Text('Reminder removed.'),
+                    backgroundColor: Colors.red,
+                  ));
+              });
+            }
           } else {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(const SnackBar(
-                  content: Text('Please log in to set reminders.')));
+            // --- Set Reminder ---
+            await db.setReminder(widget.call.id, user.uid);
+            await Add2Calendar.addEvent2Cal(_createCalendarEvent());
+            if (mounted) {
+              setState(() {
+                _isReminderSet = true;
+                ScaffoldMessenger.of(context)
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(const SnackBar(
+                    content: Text('Reminder set and added to calendar!'),
+                    backgroundColor: Colors.green,
+                  ));
+              });
+            }
           }
         },
-        icon: const Icon(Icons.notifications_active_outlined),
-        label: const Text("Remind Me"),
+        icon: Icon(
+          _isReminderSet
+              ? Icons.notifications_active
+              : Icons.notifications_active_outlined,
+          color: _isReminderSet ? Colors.yellow.shade700 : Colors.white,
+        ),
+        label: Text(_isReminderSet ? "Reminder Set" : "Remind Me"),
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
-          backgroundColor: const Color(0xFF2D2D2D),
+          backgroundColor:
+          _isReminderSet ? const Color(0xFF4d481a) : const Color(0xFF2D2D2D),
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
@@ -354,6 +435,7 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
       ),
     );
   }
+
 
   Widget _buildLiveCallFooter() {
     return Column(
@@ -383,7 +465,8 @@ class _CallCardState extends State<CallCard> with SingleTickerProviderStateMixin
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.people_alt_outlined, size: 18, color: Colors.white70),
+            const Icon(Icons.people_alt_outlined,
+                size: 18, color: Colors.white70),
             const SizedBox(width: 6),
             Text(
               "${widget.call.listeners} listening",

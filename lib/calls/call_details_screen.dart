@@ -126,6 +126,7 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
                 children: [
                   _buildCallInfo(textTheme),
                   const SizedBox(height: 30),
+
                   if (widget.call.recordingUrl != null &&
                       widget.call.recordingUrl!.isNotEmpty)
                     _buildAudioPlayer(textTheme)
@@ -440,7 +441,7 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
             const Icon(Icons.mic_off_outlined, color: Colors.white54, size: 48),
             const SizedBox(height: 16),
             Text(
-              "No recording on this conversation.",
+              "No recording available.",
               textAlign: TextAlign.center,
               style: textTheme.bodyLarge!.copyWith(color: Colors.white70),
             ),

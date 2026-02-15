@@ -103,6 +103,7 @@ class DatabaseService {
     return _db
         .collection('calls')
         .where('callerId', isEqualTo: uid)
+        .orderBy('startTime', descending: true)
         .snapshots()
         .map((snap) =>
         snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
@@ -110,7 +111,10 @@ class DatabaseService {
 
   // Get all calls for the admin dashboard
   Stream<List<CallModel>> streamAllCalls() {
-    return _db.collection('calls').snapshots().map((snap) =>
+    return _db.collection('calls')
+        .orderBy('startTime', descending: true)
+        .limit(50)
+        .snapshots().map((snap) =>
         snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
   }
 
@@ -132,6 +136,7 @@ class DatabaseService {
         .where('isLive', isEqualTo: false)
         .where('isFeatured', isEqualTo: true)
         .where('startTime', isGreaterThan: Timestamp.now())
+        .orderBy('startTime', descending: true)
         .snapshots()
         .map((snap) =>
         snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
@@ -144,6 +149,7 @@ class DatabaseService {
         .where('isLive', isEqualTo: false)
         .where('startTime', isGreaterThan: Timestamp.now())
         .where('callerId', isEqualTo: uid)
+        .orderBy('startTime', descending: true)
         .snapshots()
         .map((snap) =>
         snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
@@ -156,6 +162,8 @@ class DatabaseService {
         .where('isLive', isEqualTo: false)
         .where('isFeatured', isEqualTo: true)
         .where('startTime', isLessThan: Timestamp.now())
+        .orderBy('startTime', descending: true)
+        .limit(50)
         .snapshots()
         .map((snap) =>
         snap.docs.map((doc) => CallModel.fromMap(doc.data(), doc.id)).toList());
@@ -284,6 +292,22 @@ class DatabaseService {
     }
   }
 
+  // Check if a reminder is set for a call
+  Future<bool> isReminderSet(String callId, String userId) async {try {
+    final doc = await _db
+        .collection('calls')
+        .doc(callId)
+        .collection('reminders')
+        .doc(userId)
+        .get();
+    return doc.exists;
+  } catch (e) {
+    // print(e.toString());
+    return false;
+  }
+  }
+
+
   // Set a reminder for a call
   Future<void> setReminder(String callId, String userId) async {
     try {
@@ -303,6 +327,23 @@ class DatabaseService {
       // print(e.toString());
     }
   }
+
+
+  // Remove a reminder for a call
+  Future<void> removeReminder(String callId, String userId) async {
+    try {
+      await _db
+          .collection('calls')
+          .doc(callId)
+          .collection('reminders')
+          .doc(userId)
+          .delete();
+    } catch (e) {
+      // print(e.toString());
+    }
+  }
+
+
 
   // End a call
   Future<void> endCall(String callId) async {
