@@ -2,8 +2,6 @@ import 'dart:async';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:path_provider/path_provider.dart';
 
-const String agoraAppId = String.fromEnvironment('AGORA_APP_ID');
-
 class AgoraService {
   late RtcEngine _engine;
   String? _recordingPath;
@@ -12,6 +10,7 @@ class AgoraService {
 
   // Initialize Agora
   Future<void> initialize({
+    required String appId,
     void Function(RtcConnection, List<AudioVolumeInfo>, int, int)?
     onAudioVolumeIndication,
     void Function(RtcConnection, int, int)? onUserJoined,
@@ -20,13 +19,12 @@ class AgoraService {
     onConnectionStateChanged,
   }) async {
     if (_isInitialized) return;
-    if (agoraAppId.isEmpty) {
-      throw Exception(
-          'AGORA_APP_ID is missing. Pass it via --dart-define=AGORA_APP_ID=...');
+    if (appId.isEmpty) {
+      throw Exception('Agora appId is missing from server configuration.');
     }
     _engine = createAgoraRtcEngine();
-    await _engine.initialize(const RtcEngineContext(
-      appId: agoraAppId,
+    await _engine.initialize(RtcEngineContext(
+      appId: appId,
       channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
     ));
 

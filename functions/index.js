@@ -32,6 +32,29 @@ const TOPIC_KEYWORDS = {
   dating: ["dating", "date", "crush", "situationship"],
 };
 
+function buildAgoraToken(channelName, uid) {
+  if (!APP_ID || !APP_CERTIFICATE) {
+    throw new HttpsError(
+        "failed-precondition",
+        "Agora credentials are not configured on the server."
+    );
+  }
+
+  const role = RtcRole.PUBLISHER;
+  const expirationTimeInSeconds = 3600; // 1 hour
+  const currentTimestamp = Math.floor(Date.now() / 1000);
+  const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
+
+  return RtcTokenBuilder.buildTokenWithUid(
+      APP_ID,
+      APP_CERTIFICATE,
+      channelName,
+      uid,
+      role,
+      privilegeExpiredTs
+  );
+}
+
 function chunkArray(array, size) {
   const chunks = [];
   for (let i = 0; i < array.length; i += size) {
@@ -82,13 +105,6 @@ exports.generateAgoraToken = onCall(async (request) => {
     );
   }
 
-  if (!APP_ID || !APP_CERTIFICATE) {
-    throw new HttpsError(
-        "failed-precondition",
-        "Agora credentials are not configured on the server.",
-    );
-  }
-
   const channelName = request.data.channelName;
   if (!channelName || typeof channelName !== "string") {
     throw new HttpsError(
@@ -97,23 +113,13 @@ exports.generateAgoraToken = onCall(async (request) => {
     );
   }
 
-  const uid = request.data.uid && typeof request.data.uid === "number" ? request.data.uid : 0;
-  const role = RtcRole.PUBLISHER;
-  const expirationTimeInSeconds = 3600; // 1 hour
-  const currentTimestamp = Math.floor(Date.now() / 1000);
-  const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
+  const uid = request.data.uid && typeof request.data.uid === "number" ?
+    request.data.uid : 0;
 
   try {
     console.log(`Generating token for channel: "${channelName}" with UID: ${uid}`);
 
-    const token = RtcTokenBuilder.buildTokenWithUid(
-        APP_ID,
-        APP_CERTIFICATE,
-        channelName,
-        uid,
-        role,
-        privilegeExpiredTs,
-    );
+    const token = buildAgoraToken(channelName, uid);
 
     console.log(`Successfully generated token: ${token}`);
     return {token: token};
@@ -122,6 +128,46 @@ exports.generateAgoraToken = onCall(async (request) => {
     throw new HttpsError(
         "internal",
         "Failed to generate Agora token.",
+    );
+  }
+});
+
+exports.getAgoraSessionConfig = onCall(async (request) => {
+  if (!APP_ID) {
+    throw new HttpsError(
+        "failed-precondition",
+        "Agora App ID is not configured on the server."
+    );
+  }
+
+  const appId = APP_ID;
+
+  if (!request.auth) {
+    return {appId, token: null};
+  }
+
+  const channelName = request.data.channelName;
+  if (!channelName || typeof channelName !== "string") {
+    throw new HttpsError(
+        "invalid-argument",
+        'The function must be called with "channelName".'
+    );
+  }
+
+  const uid = request.data.uid && typeof request.data.uid === "number" ?
+    request.data.uid : 0;
+
+  try {
+    const token = buildAgoraToken(channelName, uid);
+    return {appId, token};
+  } catch (error) {
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+    console.error("Error generating Agora session config:", error);
+    throw new HttpsError(
+        "internal",
+        "Failed to generate Agora session config."
     );
   }
 });
