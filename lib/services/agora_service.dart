@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:path_provider/path_provider.dart';
 
-const String agoraAppId = String.fromEnvironment('AGORA_APP_ID');
+const String agoraAppId = '7cbfdc57592f47b2a939e2838238f066';
 
 class AgoraService {
   late RtcEngine _engine;

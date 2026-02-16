@@ -5,9 +5,8 @@ const {RtcTokenBuilder, RtcRole} = require("agora-token");
 
 admin.initializeApp();
 
-// Your Agora credentials
-const APP_ID = process.env.AGORA_APP_ID;
-const APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE;
+const APP_ID = "7cbfdc57592f47b2a939e2838238f066";
+const APP_CERTIFICATE = "9bca5f09b5ab41bfbb09b15230835f90";
 
 const TOPIC_KEYWORDS = {
   relationships: ["relationship", "relationships", "partner", "marriage", "romance"],

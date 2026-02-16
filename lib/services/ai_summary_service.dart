@@ -4,11 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AiSummaryService {
-  static const String _defaultEndpoint =
-      'https://api.elevenlabs.io/v1/convai/conversations/summarize';
-  static const String _apiKey = String.fromEnvironment('ELEVENLABS_API_KEY');
-  static const String _endpoint =
-      String.fromEnvironment('ELEVENLABS_SUMMARY_ENDPOINT', defaultValue: _defaultEndpoint);
+  static const String _apiKey = "sk_20d3a3198be5381d0eee6d2c6a94f46f3e0c2cef465d8ed6";
+  static const String _endpoint = 'https://api.elevenlabs.io/v1/convai/conversations/summarize';
   static const String _consentKey = 'ai_summary_third_party_consent';
 
   Future<bool> hasSummaryConsent() async {
