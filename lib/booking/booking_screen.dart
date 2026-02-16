@@ -274,27 +274,45 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
           ),
           SliverFillRemaining(
-            child: BookingCalendar(
-              key: ValueKey(_selectedHost?.uid ?? 'no-host'),
-              bookingService: mockBookingService,
-              convertStreamResultToDateTimeRanges: convertStreamResultFirebase,
-              getBookingStream: getBookingStreamFirebase,
-              uploadBooking: moveToNext,
-              pauseSlots: generatePauseSlots(),
-              pauseSlotText: 'Break',
-              hideBreakTime: false,
-              loadingWidget: const Text('Fetching data...'),
-              uploadingWidget:
+            child: Container(
+              color: const Color(0xFF111111),
+              padding: const EdgeInsets.only(top: 8),
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  colorScheme: const ColorScheme.dark(
+                    primary: Colors.deepPurple,
+                    surface: Color(0xFF111111),
+                  ),
+                  scaffoldBackgroundColor: const Color(0xFF111111),
+                  cardColor: const Color(0xFF111111),
+                  canvasColor: const Color(0xFF111111),
+                  textTheme: Theme.of(context)
+                      .textTheme
+                      .apply(bodyColor: Colors.white, displayColor: Colors.white),
+                ),
+                child: BookingCalendar(
+                  key: ValueKey(_selectedHost?.uid ?? 'no-host'),
+                  bookingService: mockBookingService,
+                  convertStreamResultToDateTimeRanges: convertStreamResultFirebase,
+                  getBookingStream: getBookingStreamFirebase,
+                  uploadBooking: moveToNext,
+                  pauseSlots: generatePauseSlots(),
+                  pauseSlotText: 'Break',
+                  hideBreakTime: false,
+                  loadingWidget: const Text('Fetching data...'),
+                  uploadingWidget:
                   const Center(child: CircularProgressIndicator()),
-              startingDayOfWeek: StartingDayOfWeek.sunday,
-              bookingButtonColor: Colors.deepPurple,
-              availableSlotColor: Colors.green,
-              selectedSlotColor: Colors.blue,
-              wholeDayIsBookedWidget: const Text(
-                'Sorry, for this day everything is booked',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
+                  startingDayOfWeek: StartingDayOfWeek.sunday,
+                  bookingButtonColor: Colors.deepPurple,
+                  availableSlotColor: Colors.green,
+                  selectedSlotColor: Colors.blue,
+                  wholeDayIsBookedWidget: const Text(
+                    'Sorry, for this day everything is booked',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+          )
+            )
           )
         ],
       ),
