@@ -481,7 +481,7 @@ class _CallCardState extends State<CallCard>
             border: Border.all(color: Colors.white.withValues(alpha:0.14)),
           ),
           child: Text(
-            "No recording for this conversation.",
+            "Recording not available.",
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               color: Colors.white.withValues(alpha:0.7),

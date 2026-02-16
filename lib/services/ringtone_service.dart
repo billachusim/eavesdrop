@@ -12,7 +12,7 @@ class RingtoneService {
     // Set the release mode to loop so the sound repeats
     await _audioPlayer.setReleaseMode(ReleaseMode.loop);
     // Assuming you have a ringing.mp3 in your assets/audio/ folder
-    await _audioPlayer.play(AssetSource('audio/tictactoeWin.mp3'));
+    await _audioPlayer.play(AssetSource('audio/beep-329314.mp3'));
 
     // Vibrate in a loop
     if (await Vibration.hasVibrator() ?? false) {

@@ -627,14 +627,14 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
                   onTap: () {
                     if (call.isLive) {
                       RingtoneService.stopRingtone();
-                      if (_user == null) {
+                      /*if (_user == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Please log in to join a call.'),
                           ),
                         );
                         return;
-                      }
+                      }*/
                       Navigator.push(
                         context,
                         MaterialPageRoute(

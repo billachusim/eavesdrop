@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
+import 'call_state_service.dart';
+
 class NotificationService {
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -73,13 +75,16 @@ class NotificationService {
 
   void showIncomingCall(String callId) async {
     final call = await _db.getCallById(callId);
-    if (call != null) {
+    final isNotInThisCall = CallStateService.activeCallId != call?.id;
+    if (isNotInThisCall) {
       RingtoneService.playRingtone();
       navigatorKey.currentState?.push(
         MaterialPageRoute(
-          builder: (context) => IncomingCallScreen(call: call),
+          builder: (context) => IncomingCallScreen(call: call!),
         ),
       );
+    } else {
+      RingtoneService.stopRingtone();
     }
   }
 }

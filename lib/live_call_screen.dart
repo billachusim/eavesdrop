@@ -35,6 +35,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   bool _showPaywall = false;
   bool _isMuted = false;
   bool _isBroadcaster = false;
+  bool _isCaller = false;
   bool _isProcessingEnd = false;
   bool _hasJoinedListeners = false;
   String _connectionLabel = 'Connecting…';
@@ -50,6 +51,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     super.initState();
     _initialize();
     CallStateService.activeCallId = widget.call.id;
+    RingtoneService.stopRingtone();
   }
 
   Future<void> _initialize() async {
@@ -143,15 +145,18 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     }
 
     final userModel = await _db.streamUser(user.uid).first;
-    final isBroadcaster = user.uid == widget.call.hostId ||
-        userModel.isAdmin ||
-        userModel.isSuperAdmin;
+    final isBroadcaster = userModel.isAdmin || userModel.isSuperAdmin;
+    final isCaller = userModel.uid == widget.call.callerId;
+
 
     if (mounted) {
-      setState(() => _isBroadcaster = isBroadcaster);
+      setState(() {
+        _isBroadcaster = isBroadcaster;
+        _isCaller = isCaller;
+      });
     }
 
-    if (isBroadcaster) {
+    if (isBroadcaster || isCaller) {
       if (await Permission.microphone.request() != PermissionStatus.granted) {
         throw Exception('Microphone permission is required to broadcast.');
       }
@@ -192,9 +197,6 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
       },
     );
 
-    final role = isBroadcaster
-        ? ClientRoleType.clientRoleBroadcaster
-        : ClientRoleType.clientRoleAudience;
 
     final functions = FirebaseFunctions.instance;
     final results = await functions.httpsCallable('generateAgoraToken').call({
@@ -204,7 +206,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     final token = results.data['token'];
 
     await _agoraService.joinChannel(
-        token, widget.call.channelName, user.uid.hashCode, role);
+        token, widget.call.channelName, user.uid.hashCode, ClientRoleType.clientRoleBroadcaster);
 
     if (!_hasJoinedListeners) {
       await _db.joinCallListeners(
@@ -712,7 +714,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
           backgroundColor: const Color(0xFF2B2B2B),
           child: const Text("😂", style: TextStyle(fontSize: 24)),
         ),
-        if (_isBroadcaster)
+        if (_isBroadcaster || _isCaller)
           FloatingActionButton(
             heroTag: 'mute_btn',
             onPressed: () {
