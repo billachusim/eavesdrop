@@ -43,6 +43,22 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   Duration _freeTrialRemaining = _freeTrialDuration;
   Timer? _trialTimer;
 
+  Future<Map<String, dynamic>> _getAgoraSessionConfig(int uid) async {
+    final functions = FirebaseFunctions.instance;
+    final results = await functions.httpsCallable('getAgoraSessionConfig').call({
+      'channelName': widget.call.channelName,
+      'uid': uid,
+    });
+
+    final data = Map<String, dynamic>.from(results.data as Map);
+    final appId = data['appId'];
+    if (appId is! String || appId.isEmpty) {
+      throw Exception('Agora appId is missing from Cloud Functions.');
+    }
+
+    return data;
+  }
+
 
 
   @override
@@ -103,9 +119,15 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
   Future<void> _initializeAgora() async {
     final user = Provider.of<User?>(context, listen: false);
+    final uid = user?.uid.hashCode ?? 0;
+    final sessionConfig = await _getAgoraSessionConfig(uid);
+    final appId = sessionConfig['appId'] as String;
+    final token = (sessionConfig['token'] as String?) ?? '';
+
     if (user == null) {
       // Guest logic: Initialize and join as audience
       await _agoraService.initialize(
+        appId: appId,
         onConnectionStateChanged: (connection, state, reason) {
           if (!mounted) return;
           setState(() {
@@ -138,7 +160,12 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
           });
         },
       );
-      await _agoraService.joinChannel('', widget.call.channelName, 0, ClientRoleType.clientRoleAudience);
+      await _agoraService.joinChannel(
+        token,
+        widget.call.channelName,
+        0,
+        ClientRoleType.clientRoleAudience,
+      );
       return;
     }
 
@@ -159,6 +186,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
     await Permission.bluetoothConnect.request();
     await _agoraService.initialize(
+      appId: appId,
       onConnectionStateChanged: (connection, state, reason) {
         if (!mounted) return;
         setState(() {
@@ -196,15 +224,8 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
         ? ClientRoleType.clientRoleBroadcaster
         : ClientRoleType.clientRoleAudience;
 
-    final functions = FirebaseFunctions.instance;
-    final results = await functions.httpsCallable('generateAgoraToken').call({
-      'channelName': widget.call.channelName,
-      'uid': user.uid.hashCode,
-    });
-    final token = results.data['token'];
-
     await _agoraService.joinChannel(
-        token, widget.call.channelName, user.uid.hashCode, role);
+        token, widget.call.channelName, uid, role);
 
     if (!_hasJoinedListeners) {
       await _db.joinCallListeners(
