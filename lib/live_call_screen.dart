@@ -727,7 +727,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
             _isMuted ? Colors.red : const Color(0xFF2B2B2B),
             child: Icon(_isMuted ? Icons.mic_off : Icons.mic),
           ),
-        if (!_isBroadcaster) // Only show for non-broadcasters
+        if (!_isBroadcaster || !_isCaller)
           FloatingActionButton(
             heroTag: 'question_btn',
             onPressed: () => _handleSendQuestion(userModel),
@@ -754,7 +754,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
     return Column(
       children: [
-        if (!_isBroadcaster)
+        if (!_isBroadcaster || !_isCaller)
           Container(
             width: double.infinity,
             margin: const EdgeInsets.only(bottom: 10),
