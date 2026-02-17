@@ -40,7 +40,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   bool _hasJoinedListeners = false;
   String _connectionLabel = 'Connecting…';
   bool _connectionWarning = false;
-  static const Duration _freeTrialDuration = Duration(minutes: 10);
+  static const Duration _freeTrialDuration = Duration(minutes: 3);
   Duration _freeTrialRemaining = _freeTrialDuration;
   Timer? _trialTimer;
 
@@ -140,10 +140,22 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
           });
         },
       );
-      await _agoraService.joinChannel('', widget.call.channelName, 0, ClientRoleType.clientRoleAudience);
+      final functions = FirebaseFunctions.instance;
+      final results = await functions.httpsCallable('generateGuestAgoraToken').call({
+        'channelName': widget.call.channelName,
+        'uid': 0, // Use UID 0 for guest/audience users
+      });
+      final token = results.data['token'];
+
+      await _agoraService.joinChannel(
+          token, widget.call.channelName, 0, ClientRoleType.clientRoleAudience);
+
       return;
     }
 
+
+
+    // For broadcasters and callers...
     final userModel = await _db.streamUser(user.uid).first;
     final isBroadcaster = userModel.isAdmin || userModel.isSuperAdmin;
     final isCaller = userModel.uid == widget.call.callerId;
@@ -354,18 +366,11 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     final textTheme = GoogleFonts.interTextTheme();
     final user = Provider.of<User?>(context);
 
-    return user != null
-        ? StreamBuilder<UserModel>(
-      stream: _db.streamUser(user.uid),
+    return StreamBuilder<UserModel>(
+      stream: _db.streamUser(user?.uid ?? '0'),
       builder: (context, userSnapshot) {
-        if (!userSnapshot.hasData) {
-          return const Scaffold(
-            backgroundColor: Color(0xFF0B0B0B),
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
 
-        final userModel = userSnapshot.data!;
+        final userModel = userSnapshot.data ?? UserModel(uid: '');
         final isHost = userModel.uid == widget.call.hostId;
         final isPrivilegedUser =
             isHost || userModel.isAdmin || userModel.isSuperAdmin;
@@ -483,8 +488,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
           },
         );
       },
-    )
-        : const OnboardingScreen(); // Or a guest view
+    );
   }
 
   Widget _questionsList() {
@@ -765,8 +769,8 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
             ),
             child: Text(
               _freeTrialRemaining > Duration.zero
-                  ? 'Free trial left: ${_freeTrialRemaining.inMinutes.toString().padLeft(2, '0')}:${(_freeTrialRemaining.inSeconds % 60).toString().padLeft(2, '0')}'
-                  : 'Free trial ended. Unlock to continue listening.',
+                  ? 'Free eavesdropping left: ${_freeTrialRemaining.inMinutes.toString().padLeft(2, '0')}:${(_freeTrialRemaining.inSeconds % 60).toString().padLeft(2, '0')}'
+                  : 'Free eavesdropping ended. Unlock to continue.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white70),
             ),

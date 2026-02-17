@@ -69,7 +69,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   }
 
   Future<dynamic> saveAndUploadBooking() async {
-    FocusScope.of(context).unfocus();
+    FocusManager.instance.primaryFocus?.unfocus();
     if (!_formKey.currentState!.validate()) {
       return;
     }

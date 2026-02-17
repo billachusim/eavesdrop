@@ -72,6 +72,54 @@ async function addInAppNotification(uid, title, body, type) {
       });
 }
 
+
+exports.generateGuestAgoraToken = onCall(async (request) => {
+  if (!APP_ID || !APP_CERTIFICATE) {
+    throw new HttpsError(
+        "failed-precondition",
+        "Agora credentials are not configured on the server.",
+    );
+  }
+
+  const channelName = request.data.channelName;
+  if (!channelName || typeof channelName !== "string") {
+    throw new HttpsError(
+        "invalid-argument",
+        'The function must be called with "channelName".',
+    );
+  }
+
+  // For guests, UID is always 0 and role is always SUBSCRIBER
+  const uid = 0;
+  const role = RtcRole.SUBSCRIBER;
+  const expirationTimeInSeconds = 300;
+  const currentTimestamp = Math.floor(Date.now() / 1000);
+  const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
+
+  try {
+    console.log(`Generating GUEST token for channel: "${channelName}"`);
+
+    const token = RtcTokenBuilder.buildTokenWithUid(
+        APP_ID,
+        APP_CERTIFICATE,
+        channelName,
+        uid,
+        role,
+        privilegeExpiredTs,
+    );
+
+    console.log(`Successfully generated guest token: ${token}`);
+    return {token: token};
+  } catch (error) {
+    console.error("Error generating Agora guest token:", error);
+    throw new HttpsError(
+        "internal",
+        "Failed to generate Agora guest token.",
+    );
+  }
+});
+
+
 exports.generateAgoraToken = onCall(async (request) => {
   // Authentication check
   if (!request.auth) {
