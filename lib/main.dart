@@ -18,7 +18,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  _notificationService.showIncomingCall(message.data['callId']);
+  //_notificationService.showIncomingCall(message.data['callId']);
 }
 
 void main() async {

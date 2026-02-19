@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:eavesdrop/admin/admin_dashboard.dart';
-import 'package:eavesdrop/auth/auth_service.dart';
 import 'package:eavesdrop/booking/booking_screen.dart';
 import 'package:eavesdrop/calls/call_details_screen.dart';
 import 'package:eavesdrop/calls/favorite_calls_screen.dart';
@@ -10,10 +9,7 @@ import 'package:eavesdrop/credits_screen.dart';
 import 'package:eavesdrop/live_call_screen.dart';
 import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/models/user_model.dart';
-import 'package:eavesdrop/notification_center_screen.dart';
-import 'package:eavesdrop/services/call_state_service.dart';
 import 'package:eavesdrop/services/database_service.dart';
-import 'package:eavesdrop/services/ringtone_service.dart';
 import 'package:eavesdrop/widgets/call_card.dart';
 import 'package:eavesdrop/widgets/settings_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -21,7 +17,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:rxdart/rxdart.dart';
-
 import 'auth/onboarding_screen.dart';
 
 enum HomeFeedFilter { all, live, soon, week, past }
@@ -85,23 +80,6 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
               _featuredUpcomingCalls = newFeaturedUpcomingCalls;
             });
 
-            // Determine if the ringtone should play.
-            final shouldRing = newLiveCalls.any((call) {
-              // Can't ring if user is not logged in.
-              if (_user == null) return false;
-              // User is either the host or the original caller.
-              final isUserInvolved =
-                  call.hostId == _user!.uid || call.callerId == _user!.uid;
-              // User is not already in this call.
-              final isNotInThisCall = CallStateService.activeCallId != call.id;
-              return isUserInvolved && isNotInThisCall;
-            });
-
-            if (shouldRing) {
-              RingtoneService.playRingtone();
-            } else {
-              RingtoneService.stopRingtone();
-            }
           }
         });
   }
@@ -131,7 +109,6 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
 
   @override
   void dispose() {
-    RingtoneService.stopRingtone();
     _callsStreamSubscription?.cancel();
     _userUpcomingCallsSubscription?.cancel();
     _featuredPastCallsSubscription.cancel();
@@ -499,16 +476,33 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
             );
           },
         ),
-        TextButton.icon(
-          icon: const Icon(Icons.settings_outlined),
-          label: const Text('Settings', style: TextStyle(color: Colors.white)),
-          onPressed: () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsPage()));
-          },
-        ),
+        if (user == null)
+          TextButton.icon(
+            icon: const Icon(Icons.login, color: Colors.white),
+            label: const Text('Login', style: TextStyle(color: Colors.white)),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const OnboardingScreen(),
+                ),
+              );
+            },
+          )
+        else
+          TextButton.icon(
+            icon: const Icon(Icons.settings_outlined),
+            label:
+            const Text('Settings', style: TextStyle(color: Colors.white)),
+            onPressed: () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => const SettingsPage()));
+            },
+          ),
       ],
     );
   }
+
 
   Widget _buildTopicFollowChips() {
     if (_user == null) return const SizedBox.shrink();
@@ -626,12 +620,6 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
                   call: call,
                   onTap: () {
                     if (call.isLive) {
-                      RingtoneService.stopRingtone();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Entering quietly as guest.'),
-                          ),
-                        );
                       Navigator.push(
                         context,
                         MaterialPageRoute(

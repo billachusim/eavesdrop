@@ -196,7 +196,7 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Pay $_unlockCost credits'),
+            child: const Text('Pay $_unlockCost credits'),
           ),
         ],
       ),

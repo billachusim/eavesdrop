@@ -9,7 +9,6 @@ import 'package:eavesdrop/paywall_overlay.dart';
 import 'package:eavesdrop/services/agora_service.dart';
 import 'package:eavesdrop/services/call_state_service.dart';
 import 'package:eavesdrop/services/database_service.dart';
-import 'package:eavesdrop/services/ringtone_service.dart';
 import 'package:eavesdrop/services/storage_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -51,56 +50,54 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     super.initState();
     _initialize();
     CallStateService.activeCallId = widget.call.id;
-    RingtoneService.stopRingtone();
   }
 
-  Future<void> _initialize() async {
-    try {
-      await _initializeAgora();
-      // Free-trial timer + paywall/auth walls.
-      if (mounted) {
-        _trialTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-          if (!mounted) return;
-          if (_isBroadcaster) {
-            timer.cancel();
-            return;
-          }
+  Future<void> _initialize() async {try {
+    await _initializeAgora();
+    // Free-trial timer + paywall/auth walls.
+    if (mounted) {
+      _trialTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) return;
+        if (_isBroadcaster || _isCaller) {
+          timer.cancel();
+          return;
+        }
+        setState(() {
+          _freeTrialRemaining -= const Duration(seconds: 1);
+        });
+        if (_freeTrialRemaining <= Duration.zero) {
+          timer.cancel();
+        }
+      });
+
+      Future.delayed(_freeTrialDuration, () {
+        if (!mounted) return;
+
+        // Re-check user status inside the delayed future.
+        final currentUser = Provider.of<User?>(context, listen: false);
+        if (currentUser == null) {
+          // For guest users, show the Auth Wall.
           setState(() {
-            _freeTrialRemaining -= const Duration(seconds: 1);
+            _showAuthWall = true;
+            _agoraService.muteAllRemoteAudioStreams(true);
           });
-          if (_freeTrialRemaining <= Duration.zero) {
-            timer.cancel();
-          }
-        });
-
-        Future.delayed(_freeTrialDuration, () {
-          if (!mounted) return;
-
-          // Re-check user status inside the delayed future.
-          final currentUser = Provider.of<User?>(context, listen: false);
-          if (currentUser == null) {
-            // For guest users, show the Auth Wall.
-            setState(() {
-              _showAuthWall = true;
-              _agoraService.muteAllRemoteAudioStreams(true);
-            });
-          } else if (!_isBroadcaster) {
-            // For signed-in, non-host users, show the Paywall.
-            setState(() {
-              _showPaywall = true;
-              _agoraService.muteAllRemoteAudioStreams(true);
-            });
-          }
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to join call: ${e.toString()}')),
-        );
-        Navigator.of(context).pop();
-      }
+        } else if (!_isBroadcaster && !_isCaller) { // Corrected logic here
+          // For signed-in, non-privileged users, show the Paywall.
+          setState(() {
+            _showPaywall = true;
+            _agoraService.muteAllRemoteAudioStreams(true);
+          });
+        }
+      });
     }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to join call: ${e.toString()}')),
+      );
+      Navigator.of(context).pop();
+    }
+  }
   }
 
   Future<void> _initializeAgora() async {
@@ -243,7 +240,6 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     if (CallStateService.activeCallId == widget.call.id) {
       CallStateService.activeCallId = null;
     }
-    RingtoneService.stopRingtone();
     super.dispose();
   }
 
@@ -758,7 +754,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
 
     return Column(
       children: [
-        if (!_isBroadcaster || !_isCaller)
+        if (!_isBroadcaster && !_isCaller)
           Container(
             width: double.infinity,
             margin: const EdgeInsets.only(bottom: 10),

@@ -1,6 +1,5 @@
 import 'package:eavesdrop/incoming_call_screen.dart';
 import 'package:eavesdrop/services/database_service.dart';
-import 'package:eavesdrop/services/ringtone_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -77,14 +76,12 @@ class NotificationService {
     final call = await _db.getCallById(callId);
     final isNotInThisCall = CallStateService.activeCallId != call?.id;
     if (isNotInThisCall) {
-      RingtoneService.playRingtone();
       navigatorKey.currentState?.push(
         MaterialPageRoute(
           builder: (context) => IncomingCallScreen(call: call!),
         ),
       );
     } else {
-      RingtoneService.stopRingtone();
     }
   }
 }

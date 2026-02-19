@@ -4,10 +4,8 @@ import 'package:eavesdrop/models/booking_model.dart';
 import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/models/user_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import '../auth/auth_service.dart';
 
 class DatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
