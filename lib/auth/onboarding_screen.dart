@@ -142,7 +142,7 @@ class _SignUpTabState extends State<_SignUpTab> {
     if (!_termsAccepted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('You must accept the Terms & Policy to register.')),
+            content: Text('You must accept the Terms, Privacy Policy, and no-abuse rules to register.')),
       );
       return;
     }
@@ -242,7 +242,7 @@ class _SignUpTabState extends State<_SignUpTab> {
                           .copyWith(color: Colors.white70),
                       children: [
                         TextSpan(
-                          text: "Terms & Policy",
+                          text: "Terms, Privacy Policy, and no-abusive-content rules",
                           style: widget.textTheme.bodySmall!.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -350,7 +350,7 @@ class _LoginTabState extends State<_LoginTab> {
                     widget.textTheme.bodySmall!.copyWith(color: Colors.white70),
                 children: [
                   TextSpan(
-                    text: "Terms & Policy",
+                    text: "Terms, Privacy Policy, and no-abusive-content rules",
                     style: widget.textTheme.bodySmall!.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,

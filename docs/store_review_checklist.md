@@ -41,3 +41,10 @@ In App Review notes, add a short statement:
 - Confirm AI consent dialog appears before summary generation.
 - Tap "Don't allow" and verify no AI summary request is made.
 - Tap "Allow" and verify summary appears.
+
+### 6) UGC moderation policy (required for App Review 1.2)
+- Enforce terms acceptance at signup with explicit no-tolerance for objectionable content and abusive users.
+- Provide in-app report + block flow for user-generated content.
+- Remove blocked/reported user content from the reporter's feed immediately.
+- Maintain a moderation queue (`ugcReports`) and action all valid reports within 24 hours.
+- Remove offending content and suspend/eject abusive users when violations are confirmed.
