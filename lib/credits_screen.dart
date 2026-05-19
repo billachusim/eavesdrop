@@ -230,16 +230,25 @@ class _CreditsScreenState extends State<CreditsScreen> {
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => iapController.buyProduct(product),
-              style: ElevatedButton.styleFrom(
+            child: Obx(() {
+              final isPurchasing = iapController.purchaseInProgress.value;
+              return ElevatedButton(
+                onPressed: isPurchasing ? null : () => iapController.buyProduct(product),
+                style: ElevatedButton.styleFrom(
                 backgroundColor: isPremium ? Colors.amber : Colors.white,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: Text(isPremium ? 'Subscribe' : 'Buy Credits', style: const TextStyle(fontWeight: FontWeight.bold)),
-            ),
+                child: isPurchasing
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(isPremium ? 'Subscribe' : 'Buy Credits', style: const TextStyle(fontWeight: FontWeight.bold)),
+              );
+            }),
           ),
         ],
       ),

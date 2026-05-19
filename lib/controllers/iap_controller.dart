@@ -13,6 +13,7 @@ class IAPController extends GetxController {
   final RxList<ProductDetails> products = <ProductDetails>[].obs;
   final RxBool isAvailable = false.obs;
   final RxBool isLoading = true.obs;
+  final RxBool purchaseInProgress = false.obs;
 
   static const String premiumProductId = 'premium_monthly';
   static const Set<String> _kIds = {
@@ -78,12 +79,34 @@ class IAPController extends GetxController {
     isLoading.value = false;
   }
 
-  void buyProduct(ProductDetails product) {
+  Future<void> buyProduct(ProductDetails product) async {
+    if (!isAvailable.value) {
+      Get.snackbar('Store Unavailable', 'In-app purchases are currently unavailable.',
+          snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
+
+    purchaseInProgress.value = true;
     final PurchaseParam purchaseParam = PurchaseParam(productDetails: product);
-    if (product.id == premiumProductId) {
-      _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
-    } else {
-      _inAppPurchase.buyConsumable(purchaseParam: purchaseParam);
+
+    try {
+      final bool launched;
+      if (product.id == premiumProductId) {
+        launched = await _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
+      } else {
+        launched = await _inAppPurchase.buyConsumable(purchaseParam: purchaseParam);
+      }
+
+      if (!launched) {
+        purchaseInProgress.value = false;
+        Get.snackbar('Purchase Not Started',
+            'Unable to start the purchase flow. Please try again.',
+            snackPosition: SnackPosition.BOTTOM);
+      }
+    } catch (e) {
+      purchaseInProgress.value = false;
+      Get.snackbar('Purchase Error', e.toString(),
+          snackPosition: SnackPosition.BOTTOM);
     }
   }
 
@@ -91,9 +114,10 @@ class IAPController extends GetxController {
       List<PurchaseDetails> purchaseDetailsList) async {
     for (var purchaseDetails in purchaseDetailsList) {
       if (purchaseDetails.status == PurchaseStatus.pending) {
-        // Show pending UI if you want
+        purchaseInProgress.value = true;
       } else {
         if (purchaseDetails.status == PurchaseStatus.error) {
+          purchaseInProgress.value = false;
           Get.snackbar("Purchase Error", purchaseDetails.error!.message,
               snackPosition: SnackPosition.BOTTOM);
         } else if (purchaseDetails.status == PurchaseStatus.purchased ||
@@ -102,6 +126,7 @@ class IAPController extends GetxController {
           if (delivered) {
             await _inAppPurchase.completePurchase(purchaseDetails);
           }
+          purchaseInProgress.value = false;
         }
       }
     }
