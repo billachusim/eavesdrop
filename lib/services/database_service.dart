@@ -20,6 +20,19 @@ class DatabaseService {
   }
 
   // Get a user document
+  Future<UserModel?> getUserById(String uid) async {
+    try {
+      DocumentSnapshot doc = await _db.collection('users').doc(uid).get();
+      if (doc.exists) {
+        return UserModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+      }
+    } catch (e) {
+      // print(e.toString());
+    }
+    return null;
+  }
+
+  // Get a user document (Stream)
   Stream<UserModel> streamUser(String uid) {
     return _db
         .collection('users')

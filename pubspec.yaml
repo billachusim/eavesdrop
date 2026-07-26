@@ -3,7 +3,7 @@ description: "Live Conversations Worth Listening To"
 
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 1.4.0+5
+version: 1.5.0+6
 
 environment:
   sdk: '>=3.10.0 <4.0.0'
@@ -46,6 +46,8 @@ dependencies:
   cached_network_image: ^3.4.1
   http: ^1.2.2
   intl: ^0.18.1
+  google_sign_in: ^6.2.1
+  sign_in_with_apple: ^6.1.0
 
 
 dev_dependencies:
