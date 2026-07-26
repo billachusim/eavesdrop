@@ -3,10 +3,10 @@ description: "Live Conversations Worth Listening To"
 
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 1.3.0+4
+version: 1.4.0+5
 
 environment:
-  sdk: ^3.10.0
+  sdk: '>=3.10.0 <4.0.0'
 
 
 dependencies:
@@ -14,37 +14,38 @@ dependencies:
     sdk: flutter
 
 
-  cupertino_icons: ^1.0.8
-  google_fonts: ^8.0.1
+  cupertino_icons: ^1.0.9
+  google_fonts: ^8.2.0
   avatar_glow: ^3.0.1
-  firebase_core: ^4.4.0
-  cloud_firestore: ^6.1.2
-  firebase_storage: ^13.0.6
-  firebase_auth: ^6.1.4
-  firebase_crashlytics: ^5.0.7
-  firebase_analytics: ^12.1.1
-  firebase_messaging: ^16.1.1
-  firebase_core_platform_interface: ^6.0.2
+  firebase_core: ^4.12.1
+  cloud_firestore: ^6.7.1
+  firebase_storage: ^13.4.5
+  firebase_auth: ^6.5.6
+  firebase_crashlytics: ^5.2.6
+  firebase_analytics: ^12.4.5
+  firebase_messaging: ^16.4.3
+  firebase_core_platform_interface: ^8.0.0
   provider: ^6.1.5+1
   agora_rtc_engine: ^6.5.3
   audioplayers: ^6.5.1
   path_provider: ^2.1.5
-  flutter_lints: ^2.0.0
+  flutter_lints: ^2.0.3
   permission_handler: ^12.0.1
-  firebase_app_check: ^0.4.1+2
-  cloud_functions: ^6.0.6
-  in_app_purchase: ^3.2.3
-  in_app_purchase_storekit: ^0.4.7
+  firebase_app_check: ^0.4.5+2
+  cloud_functions: ^6.3.5
+  in_app_purchase: ^3.3.0
+  in_app_purchase_storekit: ^0.4.11
   get: ^4.7.3
   url_launcher: ^6.3.2
-  add_2_calendar: ^3.0.1
+  add_2_calendar: 3.0.1
   booking_calendar: ^1.1.10
   shared_preferences: ^2.5.4
-  uuid: ^4.5.2
+  uuid: 4.5.2
   rxdart: ^0.28.0
-  vibration: ^3.1.5
+  vibration: ^3.1.8
   cached_network_image: ^3.4.1
   http: ^1.2.2
+  intl: ^0.18.1
 
 
 dev_dependencies:

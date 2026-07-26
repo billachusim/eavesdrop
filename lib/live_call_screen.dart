@@ -129,10 +129,6 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
                 _connectionLabel = 'Disconnected';
                 _connectionWarning = true;
                 break;
-              default:
-                _connectionLabel = 'Updating…';
-                _connectionWarning = false;
-                break;
             }
           });
         },
@@ -197,10 +193,6 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
               _connectionLabel = 'Disconnected';
               _connectionWarning = true;
               break;
-              default:
-                _connectionLabel = 'Updating…';
-                _connectionWarning = false;
-                break;
           }
         });
       },

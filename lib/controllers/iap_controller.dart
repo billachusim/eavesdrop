@@ -91,9 +91,10 @@ class IAPController extends GetxController {
       List<PurchaseDetails> purchaseDetailsList) async {
     for (var purchaseDetails in purchaseDetailsList) {
       if (purchaseDetails.status == PurchaseStatus.pending) {
-        // Show pending UI if you want
+        isLoading.value = true;
       } else {
         if (purchaseDetails.status == PurchaseStatus.error) {
+          isLoading.value = false;
           Get.snackbar("Purchase Error", purchaseDetails.error!.message,
               snackPosition: SnackPosition.BOTTOM);
         } else if (purchaseDetails.status == PurchaseStatus.purchased ||
@@ -103,6 +104,10 @@ class IAPController extends GetxController {
             await _inAppPurchase.completePurchase(purchaseDetails);
           }
         }
+        if (purchaseDetails.pendingCompletePurchase) {
+          await _inAppPurchase.completePurchase(purchaseDetails);
+        }
+        isLoading.value = false;
       }
     }
   }
