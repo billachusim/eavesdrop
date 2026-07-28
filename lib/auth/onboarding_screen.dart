@@ -195,7 +195,7 @@ class _SignUpTabState extends State<_SignUpTab> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+          SnackBar(content: Text("Google Sign-In failed: ${e.toString()}")),
         );
       }
     } finally {
@@ -218,7 +218,7 @@ class _SignUpTabState extends State<_SignUpTab> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+          SnackBar(content: Text("Apple Sign-In failed: ${e.toString()}")),
         );
       }
     } finally {
@@ -391,7 +391,7 @@ class _LoginTabState extends State<_LoginTab> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+          SnackBar(content: Text("Google Sign-In failed: ${e.toString()}")),
         );
       }
     } finally {
@@ -414,7 +414,7 @@ class _LoginTabState extends State<_LoginTab> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+          SnackBar(content: Text("Apple Sign-In failed: ${e.toString()}")),
         );
       }
     } finally {

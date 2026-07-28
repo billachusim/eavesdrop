@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:eavesdrop/constants/legal_links.dart';
 import 'package:eavesdrop/controllers/iap_controller.dart';
 import 'package:eavesdrop/models/user_model.dart';
@@ -71,6 +72,20 @@ class _CreditsScreenState extends State<CreditsScreen> {
                 ),
               _buildUseCasePacks(),
               const SizedBox(height: 10),
+              Obx(() {
+                if (!iapController.isLoading.value && iapController.isAvailable.value) {
+                  final premiumProduct = iapController.products.firstWhereOrNull((p) => p.id == IAPController.premiumProductId);
+                  if (premiumProduct != null) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: _buildProductCard(premiumProduct),
+                    );
+                  }
+                }
+                return const SizedBox.shrink();
+              }),
+              const Text('TOP UP CREDITS', style: TextStyle(color: Colors.white70, letterSpacing: 1.5, fontSize: 12)),
+              const SizedBox(height: 10),
               Expanded(
                 child: Obx(() {
                   if (iapController.isLoading.value) {
@@ -83,10 +98,19 @@ class _CreditsScreenState extends State<CreditsScreen> {
                     );
                   }
 
+                  // Filter out premium from the list since we show it prominently above
+                  final creditPacks = iapController.products.where((p) => p.id != IAPController.premiumProductId).toList();
+
+                  if (creditPacks.isEmpty && iapController.products.isEmpty) {
+                    return const Center(
+                      child: Text('No products found in store.', style: TextStyle(color: Colors.white70)),
+                    );
+                  }
+
                   return ListView.builder(
-                    itemCount: iapController.products.length,
+                    itemCount: creditPacks.length,
                     itemBuilder: (context, index) {
-                      final product = iapController.products[index];
+                      final product = creditPacks[index];
                       return _buildProductCard(product);
                     },
                   );
@@ -272,6 +296,23 @@ class _CreditsScreenState extends State<CreditsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton(
+                onPressed: () => iapController.restorePurchases(),
+                child: const Text('Restore Purchases', style: TextStyle(color: Colors.white70, fontSize: 13)),
+              ),
+              if (Platform.isIOS) ...[
+                const Text(' | ', style: TextStyle(color: Colors.white24)),
+                TextButton(
+                  onPressed: () => _launchUrl('https://apps.apple.com/account/subscriptions'),
+                  child: const Text('Manage Subscriptions', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
           const Text(
             'Secure store payment encryption enabled.',
             textAlign: TextAlign.center,

@@ -79,11 +79,29 @@ class IAPController extends GetxController {
   }
 
   void buyProduct(ProductDetails product) {
-    final PurchaseParam purchaseParam = PurchaseParam(productDetails: product);
-    if (product.id == premiumProductId) {
-      _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
-    } else {
-      _inAppPurchase.buyConsumable(purchaseParam: purchaseParam);
+    isLoading.value = true;
+    try {
+      final PurchaseParam purchaseParam = PurchaseParam(productDetails: product);
+      if (product.id == premiumProductId) {
+        _inAppPurchase.buyNonConsumable(purchaseParam: purchaseParam);
+      } else {
+        _inAppPurchase.buyConsumable(purchaseParam: purchaseParam);
+      }
+    } catch (e) {
+      isLoading.value = false;
+      Get.snackbar("Error", "Could not initiate purchase: ${e.toString()}",
+          snackPosition: SnackPosition.BOTTOM);
+    }
+  }
+
+  Future<void> restorePurchases() async {
+    isLoading.value = true;
+    try {
+      await _inAppPurchase.restorePurchases();
+    } catch (e) {
+      isLoading.value = false;
+      Get.snackbar("Error", "Could not restore purchases: ${e.toString()}",
+          snackPosition: SnackPosition.BOTTOM);
     }
   }
 

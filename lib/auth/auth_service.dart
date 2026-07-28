@@ -67,7 +67,7 @@ class AuthService {
   }
 
   // Social Sign In Helper
-  Future<User?> _handleSocialSignIn(UserCredential credential) async {
+  Future<User?> _handleSocialSignIn(UserCredential credential, {String? providedDisplayName}) async {
     User? user = credential.user;
     if (user != null) {
       // Check if user already exists in Firestore
@@ -77,7 +77,7 @@ class AuthService {
         await _db.createUser(UserModel(
           uid: user.uid,
           email: user.email,
-          displayName: user.displayName ?? "User ${user.uid.substring(0, 5)}",
+          displayName: providedDisplayName ?? user.displayName ?? "User ${user.uid.substring(0, 5)}",
           photoURL: user.photoURL ?? Avatars.getRandomAvatar(),
           credits: 100,
         ));
@@ -104,7 +104,7 @@ class AuthService {
       if (kDebugMode) {
         print("Google Sign-In Error: ${e.toString()}");
       }
-      return null;
+      rethrow;
     }
   }
 
@@ -124,12 +124,19 @@ class AuthService {
       );
 
       UserCredential result = await _auth.signInWithCredential(credential);
-      return await _handleSocialSignIn(result);
+
+      // Extract name if provided (usually only on first sign-in)
+      String? name;
+      if (appleCredential.givenName != null) {
+        name = "${appleCredential.givenName} ${appleCredential.familyName ?? ""}".trim();
+      }
+
+      return await _handleSocialSignIn(result, providedDisplayName: name);
     } catch (e) {
       if (kDebugMode) {
         print("Apple Sign-In Error: ${e.toString()}");
       }
-      return null;
+      rethrow;
     }
   }
 }
