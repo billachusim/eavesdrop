@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:math';
+
+import 'package:crypto/crypto.dart';
 import 'package:eavesdrop/constants/avatars.dart';
 import 'package:eavesdrop/models/user_model.dart';
 import 'package:eavesdrop/services/database_service.dart';
@@ -111,15 +115,20 @@ class AuthService {
   // Sign in with Apple
   Future<User?> signInWithApple() async {
     try {
+      final rawNonce = _generateNonce();
+      final hashedNonce = _sha256ofString(rawNonce);
+
       final appleCredential = await SignInWithApple.getAppleIDCredential(
         scopes: [
           AppleIDAuthorizationScopes.email,
           AppleIDAuthorizationScopes.fullName,
         ],
+        nonce: hashedNonce,
       );
 
       final AuthCredential credential = OAuthProvider("apple.com").credential(
         idToken: appleCredential.identityToken,
+        rawNonce: rawNonce,
         accessToken: appleCredential.authorizationCode,
       );
 
@@ -129,6 +138,8 @@ class AuthService {
       String? name;
       if (appleCredential.givenName != null) {
         name = "${appleCredential.givenName} ${appleCredential.familyName ?? ""}".trim();
+      } else if (result.user?.displayName != null) {
+        name = result.user!.displayName;
       }
 
       return await _handleSocialSignIn(result, providedDisplayName: name);
@@ -138,5 +149,22 @@ class AuthService {
       }
       rethrow;
     }
+  }
+
+  /// Generates a cryptographically secure random nonce, to be included in a
+  /// credential request.
+  String _generateNonce([int length = 32]) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.-_';
+    final random = Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)])
+        .join();
+  }
+
+  /// Returns the sha256 hash of [input] in hex notation.
+  String _sha256ofString(String input) {
+    final bytes = utf8.encode(input);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
   }
 }

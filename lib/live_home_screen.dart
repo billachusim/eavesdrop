@@ -284,6 +284,7 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
                   _buildSection(
                     context,
                     title: 'Live Now',
+                    isLiveSection: true,
                     calls: _applySearch(
                       _applySafetyFilters(
                         _applyPersonalization(
@@ -596,8 +597,13 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
     required String title,
     required List<CallModel> calls,
     required String emptyMessage,
+    bool isLiveSection = false,
   }) {
     final textTheme = GoogleFonts.interTextTheme();
+
+    // Special case for guest users in the Live section when there are actual live calls
+    final bool showGuestLiveTeaser = isLiveSection && _user == null && _liveCalls.isNotEmpty;
+    final List<CallModel> effectiveCalls = (_user == null && isLiveSection) ? [] : calls;
 
     return SliverMainAxisGroup(
       slivers: [
@@ -613,22 +619,27 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
             ),
           ),
         ),
-        if (calls.isEmpty)
+        if (effectiveCalls.isEmpty)
           SliverToBoxAdapter(
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    const Icon(
-                      Icons.inbox_outlined,
-                      color: Colors.white38,
+                    Icon(
+                      showGuestLiveTeaser ? Icons.live_tv_rounded : Icons.inbox_outlined,
+                      color: showGuestLiveTeaser ? Colors.redAccent : Colors.white38,
                       size: 36,
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      emptyMessage,
-                      style: const TextStyle(color: Colors.white54),
+                      showGuestLiveTeaser
+                          ? 'There are ${_liveCalls.length} live conversations right now!'
+                          : emptyMessage,
+                      style: TextStyle(
+                        color: showGuestLiveTeaser ? Colors.white : Colors.white54,
+                        fontWeight: showGuestLiveTeaser ? FontWeight.bold : FontWeight.normal,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 12),
@@ -650,9 +661,13 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
                           );
                         }
                       },
+                      style: showGuestLiveTeaser ? OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.redAccent),
+                        foregroundColor: Colors.redAccent,
+                      ) : null,
                       child: Text(
                         _user == null
-                            ? 'Log in to book a call'
+                            ? (isLiveSection ? 'Log in to see live calls' : 'Log in to book a call')
                             : 'Book your next call',
                       ),
                     ),

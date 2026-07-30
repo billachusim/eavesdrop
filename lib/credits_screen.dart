@@ -35,148 +35,108 @@ class _CreditsScreenState extends State<CreditsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Get Credits'),
+        centerTitle: true,
+        title: Text(
+          'Credits & Premium',
+          style: textTheme.titleLarge!.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: DefaultTextStyle(
-          style: textTheme.bodyMedium!.copyWith(color: Colors.white),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (user != null)
-                StreamBuilder<UserModel>(
-                  stream: db.streamUser(user.uid),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const SizedBox.shrink();
-                    }
-                    final userModel = snapshot.data!;
-                    return Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          const Text('YOUR BALANCE',
-                              style: TextStyle(color: Colors.white70, letterSpacing: 1.5)),
-                          const SizedBox(height: 8),
-                          Text(
-                            '${userModel.credits} Credits',
-                            style: textTheme.headlineMedium!.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              _buildUseCasePacks(),
-              const SizedBox(height: 10),
-              Obx(() {
-                if (!iapController.isLoading.value && iapController.isAvailable.value) {
-                  final premiumProduct = iapController.products.firstWhereOrNull((p) => p.id == IAPController.premiumProductId);
-                  if (premiumProduct != null) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 20),
-                      child: _buildProductCard(premiumProduct),
-                    );
-                  }
-                }
-                return const SizedBox.shrink();
-              }),
-              const Text('TOP UP CREDITS', style: TextStyle(color: Colors.white70, letterSpacing: 1.5, fontSize: 12)),
-              const SizedBox(height: 10),
-              Expanded(
-                child: Obx(() {
-                  if (iapController.isLoading.value) {
-                    return const Center(child: CupertinoActivityIndicator(radius: 16));
-                  }
+      body: Obx(() {
+        if (iapController.isLoading.value && iapController.products.isEmpty) {
+          return const Center(child: CupertinoActivityIndicator(radius: 16));
+        }
 
-                  if (!iapController.isAvailable.value) {
-                    return const Center(
-                      child: Text('In-app purchases are not available.', style: TextStyle(color: Colors.white70)),
-                    );
-                  }
-
-                  // Filter out premium from the list since we show it prominently above
-                  final creditPacks = iapController.products.where((p) => p.id != IAPController.premiumProductId).toList();
-
-                  if (creditPacks.isEmpty && iapController.products.isEmpty) {
-                    return const Center(
-                      child: Text('No products found in store.', style: TextStyle(color: Colors.white70)),
-                    );
-                  }
-
-                  return ListView.builder(
-                    itemCount: creditPacks.length,
-                    itemBuilder: (context, index) {
-                      final product = creditPacks[index];
-                      return _buildProductCard(product);
-                    },
-                  );
-                }),
+        return ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          children: [
+            if (user != null)
+              StreamBuilder<UserModel>(
+                stream: db.streamUser(user.uid),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox.shrink();
+                  final userModel = snapshot.data!;
+                  return _buildBalanceHeader(userModel, textTheme);
+                },
               ),
-              const SizedBox(height: 12),
-              _buildSubscriptionTransparency(),
-              const SizedBox(height: 12),
-              _buildFooter(),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
-      ),
+            
+            if (iapController.error.value.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Text(
+                        iapController.error.value,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton.icon(
+                        onPressed: () => iapController.initStoreInfo(),
+                        icon: const Icon(Icons.refresh, size: 16, color: Colors.white70),
+                        label: const Text('Retry Loading Products', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Premium Section
+            ...iapController.products
+                .where((p) => p.id == IAPController.premiumProductId)
+                .map((p) => _buildProductCard(p)),
+
+            const SizedBox(height: 10),
+            if (iapController.products.any((p) => p.id != IAPController.premiumProductId))
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Text(
+                  'TOP UP CREDITS',
+                  style: TextStyle(color: Colors.white70, letterSpacing: 1.5, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+
+            // Credits Section
+            ...iapController.products
+                .where((p) => p.id != IAPController.premiumProductId)
+                .map((p) => _buildProductCard(p)),
+
+            const SizedBox(height: 32),
+            _buildFooter(),
+            const SizedBox(height: 40),
+          ],
+        );
+      }),
     );
   }
 
-  Widget _buildUseCasePacks() {
-    Widget pack(String title, String subtitle) {
-      return Expanded(
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          margin: const EdgeInsets.only(right: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF181818),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white12),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 4),
-              Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Row(
-      children: [
-        pack('2 Calls', 'Good for occasional deep chats'),
-        pack('4 Calls', 'Best for weekly consistency'),
-        pack('Unlock + 3 Qs', 'Live room + question credits'),
-      ],
-    );
-  }
-
-  Widget _buildSubscriptionTransparency() {
+  Widget _buildBalanceHeader(UserModel userModel, TextTheme textTheme) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.amber.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withValues(alpha: 0.35)),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text('Premium perks transparency', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.amberAccent)),
-          SizedBox(height: 4),
-          Text('• Unlimited call listening and scheduling'),
-          Text('• 10,000 bonus credits monthly'),
-          Text('• Priority feature access (beta)'),
+          const Text('CURRENT BALANCE',
+              style: TextStyle(color: Colors.white54, letterSpacing: 2, fontSize: 11, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Text(
+            '${userModel.credits.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} Credits',
+            style: textTheme.headlineMedium!.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+          ),
+          if (userModel.isPremium)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+                ),
+                child: const Text('PREMIUM ACTIVE', style: TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.bold)),
+              ),
+            ),
         ],
       ),
     );
@@ -186,7 +146,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
     final bool isPremium = product.id == IAPController.premiumProductId;
     String title = product.title;
     if (product.title.contains('(')) {
-      title = product.title.split('(').first;
+      title = product.title.split('(').first.trim();
     }
 
     String subscriptionPeriod = '';
@@ -205,53 +165,64 @@ class _CreditsScreenState extends State<CreditsScreen> {
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 18),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: isPremium ? const Color(0xFF1C1C1C) : const Color(0xFF151515),
-        borderRadius: BorderRadius.circular(20),
-        border: isPremium ? Border.all(color: Colors.amber, width: 1.5) : null,
+        color: isPremium ? const Color(0xFF1A1A1A) : const Color(0xFF141414),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isPremium ? Colors.amber.withValues(alpha: 0.4) : Colors.white10,
+          width: isPremium ? 1.5 : 1,
+        ),
+        boxShadow: isPremium ? [
+          BoxShadow(
+            color: Colors.amber.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          )
+        ] : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (isPremium)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(color: Colors.amber, borderRadius: BorderRadius.circular(8)),
-              child: const Text('PREMIUM', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 11)),
-            ),
-          if (isPremium) const SizedBox(height: 10),
-          Text(title.toUpperCase(), style: const TextStyle(fontSize: 16, color: Colors.white70)),
-          const SizedBox(height: 6),
-          Text(
-            isPremium ? 'Unlimited Access' : product.description,
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 6),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(product.price, style: const TextStyle(color: Colors.white70, fontSize: 16)),
-              if (subscriptionPeriod.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(left: 4, bottom: 2),
-                  child: Text(subscriptionPeriod, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 14)),
+              if (isPremium)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: Colors.amber, borderRadius: BorderRadius.circular(8)),
+                  child: const Text('BEST VALUE', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.black, fontSize: 10)),
+                )
+              else
+                const SizedBox.shrink(),
+              Text(
+                product.price,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isPremium ? Colors.amber : Colors.white,
                 ),
+              ),
             ],
           ),
-          if (isPremium)
-            Padding(
-              padding: const EdgeInsets.only(top: 10.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildPerk('Unlimited access to join and schedule calls'),
-                  _buildPerk('10,000 bonus credits monthly'),
-                ],
-              ),
-            ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          Text(
+            isPremium ? 'Eavesdrop Premium' : title,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            isPremium ? 'Unlimited access & bonus credits' : product.description,
+            style: const TextStyle(fontSize: 14, color: Colors.white60),
+          ),
+          if (isPremium) ...[
+            const SizedBox(height: 20),
+            _buildPerk('Unlimited call listening & scheduling'),
+            _buildPerk('10,000 monthly bonus credits'),
+            _buildPerk('Priority access to new features'),
+          ],
+          const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -260,9 +231,13 @@ class _CreditsScreenState extends State<CreditsScreen> {
                 backgroundColor: isPremium ? Colors.amber : Colors.white,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
-              child: Text(isPremium ? 'Subscribe' : 'Buy Credits', style: const TextStyle(fontWeight: FontWeight.bold)),
+              child: Text(
+                isPremium ? 'Subscribe Now $subscriptionPeriod' : 'Get Credits',
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+              ),
             ),
           ),
         ],
@@ -272,11 +247,11 @@ class _CreditsScreenState extends State<CreditsScreen> {
 
   Widget _buildPerk(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6.0),
+      padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
         children: [
-          const Icon(Icons.check_circle_outline, color: Colors.green, size: 16),
-          const SizedBox(width: 8),
+          const Icon(Icons.check_circle, color: Colors.amber, size: 16),
+          const SizedBox(width: 10),
           Expanded(child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 13))),
         ],
       ),
@@ -285,56 +260,55 @@ class _CreditsScreenState extends State<CreditsScreen> {
 
   Widget _buildFooter() {
     const linkStyle = TextStyle(
-      color: Colors.white,
-      fontWeight: FontWeight.bold,
+      color: Colors.white70,
+      fontWeight: FontWeight.w600,
       decoration: TextDecoration.underline,
-      decorationColor: Colors.white,
       fontSize: 12,
     );
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextButton(
+              onPressed: () => iapController.restorePurchases(),
+              child: const Text('Restore Purchases', style: TextStyle(color: Colors.white38, fontSize: 12)),
+            ),
+            if (Platform.isIOS) ...[
+              const Text(' • ', style: TextStyle(color: Colors.white12)),
               TextButton(
-                onPressed: () => iapController.restorePurchases(),
-                child: const Text('Restore Purchases', style: TextStyle(color: Colors.white70, fontSize: 13)),
-              ),
-              if (Platform.isIOS) ...[
-                const Text(' | ', style: TextStyle(color: Colors.white24)),
-                TextButton(
-                  onPressed: () => _launchUrl('https://apps.apple.com/account/subscriptions'),
-                  child: const Text('Manage Subscriptions', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Secure store payment encryption enabled.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white38, fontSize: 11),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              GestureDetector(
-                onTap: () => _launchUrl(LegalLinks.termsOfUse),
-                child: const Text('Terms of Use (EULA)', style: linkStyle),
-              ),
-              const Text('  &  ', style: TextStyle(color: Colors.white, fontSize: 12)),
-              GestureDetector(
-                onTap: () => _launchUrl(LegalLinks.privacyPolicy),
-                child: const Text('Privacy Policy', style: linkStyle),
+                onPressed: () => _launchUrl('https://apps.apple.com/account/subscriptions'),
+                child: const Text('Manage Subscriptions', style: TextStyle(color: Colors.white38, fontSize: 12)),
               ),
             ],
-          ),
-        ],
-      ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            GestureDetector(
+              onTap: () => _launchUrl(LegalLinks.termsOfUse),
+              child: const Text('Terms of Use', style: linkStyle),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: Text('|', style: TextStyle(color: Colors.white12)),
+            ),
+            GestureDetector(
+              onTap: () => _launchUrl(LegalLinks.privacyPolicy),
+              child: const Text('Privacy Policy', style: linkStyle),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'Secure store payment encryption enabled.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white24, fontSize: 10),
+        ),
+      ],
     );
   }
 
@@ -343,7 +317,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     } else {
-      Get.snackbar('Error', 'Could not launch $url', snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar('Error', 'Could not launch $url', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red, colorText: Colors.white);
     }
   }
 }

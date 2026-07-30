@@ -355,7 +355,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     final user = Provider.of<User?>(context);
 
     return StreamBuilder<UserModel>(
-      stream: _db.streamUser(user?.uid ?? '0'),
+      stream: user != null ? _db.streamUser(user.uid) : null,
       builder: (context, userSnapshot) {
 
         final userModel = userSnapshot.data ?? UserModel(uid: '');
@@ -627,7 +627,9 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
     return SizedBox(
       height: 40,
       child: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _db.streamCallListeners(widget.call.id),
+        stream: FirebaseAuth.instance.currentUser != null
+            ? _db.streamCallListeners(widget.call.id)
+            : null,
         builder: (context, snapshot) {
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const SizedBox.shrink(); // Or a placeholder

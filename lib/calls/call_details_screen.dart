@@ -285,7 +285,9 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
               ),
               centerTitle: true,
               background: StreamBuilder<UserModel>(
-                  stream: DatabaseService().streamUser(widget.call.callerId),
+                  stream: FirebaseAuth.instance.currentUser != null
+                      ? DatabaseService().streamUser(widget.call.callerId)
+                      : null,
                   builder: (context, snapshot) {
                     return Stack(
                       fit: StackFit.expand,
@@ -463,7 +465,9 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
           ),
         const SizedBox(height: 12),
         StreamBuilder<UserModel>(
-          stream: _db.streamUser(widget.call.hostId),
+          stream: FirebaseAuth.instance.currentUser != null
+            ? _db.streamUser(widget.call.hostId)
+            : null,
           builder: (context, snapshot) {
             final host = snapshot.data;
             return Wrap(
@@ -743,7 +747,9 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
       height: 40,
       width: 100,
       child: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _db.streamCallListeners(widget.call.id),
+        stream: FirebaseAuth.instance.currentUser != null
+            ? _db.streamCallListeners(widget.call.id)
+            : null,
         builder: (context, snapshot) {
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const SizedBox.shrink(); // Or a placeholder

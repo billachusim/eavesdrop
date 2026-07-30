@@ -116,7 +116,7 @@ class _CallCardState extends State<CallCard>
     final bool isPast = !widget.call.isLive && !isUpcoming;
 
     return StreamBuilder<UserModel>(
-        stream: db.streamUser(widget.call.callerId),
+        stream: user != null ? db.streamUser(widget.call.callerId) : null,
         builder: (context, userSnapshot) {
           return GestureDetector(
             onTap: widget.onTap,
