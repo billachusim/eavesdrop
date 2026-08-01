@@ -9,13 +9,17 @@ import 'package:eavesdrop/paywall_overlay.dart';
 import 'package:eavesdrop/services/agora_service.dart';
 import 'package:eavesdrop/services/call_state_service.dart';
 import 'package:eavesdrop/services/database_service.dart';
+import 'package:eavesdrop/services/engagement_service.dart';
 import 'package:eavesdrop/services/storage_service.dart';
+import 'package:eavesdrop/services/share_service.dart';
+import 'package:eavesdrop/widgets/call_share_card.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:avatar_glow/avatar_glow.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import 'package:screenshot/screenshot.dart';
 
 class LiveCallScreen extends StatefulWidget {
   final CallModel call;
@@ -30,6 +34,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
   final DatabaseService _db = DatabaseService();
   final AgoraService _agoraService = AgoraService();
   final StorageService _storageService = StorageService();
+  final ScreenshotController _screenshotController = ScreenshotController();
   bool _showAuthWall = false;
   bool _showPaywall = false;
   bool _isMuted = false;
@@ -143,6 +148,7 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
       await _agoraService.joinChannel(
           token, widget.call.channelName, 0, ClientRoleType.clientRoleAudience);
 
+      EngagementService().recordListen();
       return;
     }
 
@@ -730,7 +736,23 @@ class _LiveCallScreenState extends State<LiveCallScreen> {
           ),
         FloatingActionButton(
           heroTag: 'share_btn',
-          onPressed: () {},
+          onPressed: () async {
+            final box = context.findRenderObject() as RenderBox?;
+            final imageBytes = await _screenshotController.captureFromWidget(
+              CallShareCard(call: widget.call),
+              delay: const Duration(milliseconds: 50),
+              targetSize: const Size(1080, 1080),
+            );
+            await ShareService.shareCallWithImage(
+              title: widget.call.title,
+              hostName: widget.call.userNickname,
+              imageBytes: imageBytes,
+              callId: widget.call.id,
+              sharePositionOrigin: box != null
+                  ? box.localToGlobal(Offset.zero) & box.size
+                  : null,
+            );
+          },
           backgroundColor: const Color(0xFF2B2B2B),
           child: const Icon(Icons.share_outlined),
         ),

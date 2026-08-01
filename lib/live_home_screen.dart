@@ -136,96 +136,122 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
       backgroundColor: const Color(0xFF0D0D0D),
       body: DefaultTextStyle(
         style: textTheme.bodyMedium!.copyWith(color: Colors.white),
-        child: NestedScrollView(
-          headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
-            return <Widget>[
-              SliverAppBar(
-                title: _isMenuOpen
-                    ? null
-                    : Text(
-                        "Eavesdrop",
-                        style: textTheme.headlineMedium!.copyWith(
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                actions: [
-                  IconButton(
-                    icon: Icon(_isMenuOpen ? Icons.close : Icons.menu_rounded),
-                    onPressed: () {
-                      setState(() {
-                        _isMenuOpen = !_isMenuOpen;
-                      });
-                    },
-                  ),
-                ],
-                bottom: _isMenuOpen
-                    ? PreferredSize(
-                        preferredSize: Size.fromHeight(
-                          _user != null ? 250.0 : 206.0,
-                        ),
-                        child: Column(
-                          children: [
-                            SizedBox(
-                              height: 48.0,
-                              child: _buildMenuButtons(_user),
-                            ),
-                            const SizedBox(height: 8),
-                            SizedBox(height: 44, child: _buildFilterChips()),
-                            const SizedBox(height: 8),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: TextField(
-                                controller: _searchController,
-                                onChanged: (value) =>
-                                    setState(() => _searchQuery = value),
-                                decoration: InputDecoration(
-                                  hintText: 'Search topic, mood, host, date…',
-                                  prefixIcon: const Icon(Icons.search),
-                                  suffixIcon: _searchQuery.isNotEmpty
-                                      ? IconButton(
-                                          onPressed: () {
-                                            _searchController.clear();
-                                            setState(() => _searchQuery = '');
-                                          },
-                                          icon: const Icon(Icons.close),
-                                        )
-                                      : null,
-                                  filled: true,
-                                  fillColor: const Color(0xFF1A1A1A),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide.none,
-                                  ),
+        child: StreamBuilder<UserModel>(
+          stream: _user != null ? _db.streamUser(_user!.uid) : null,
+          builder: (context, userSnap) {
+            final userModel = userSnap.data;
+
+            return NestedScrollView(
+              headerSliverBuilder:
+                  (BuildContext context, bool innerBoxIsScrolled) {
+                return <Widget>[
+                  SliverAppBar(
+                    centerTitle: true,
+                    leadingWidth: 70,
+                    leading: _isMenuOpen
+                        ? null
+                        : Padding(
+                            padding: const EdgeInsets.only(left: 16.0),
+                            child: Center(
+                              child: ClipOval(
+                                child: Image.asset(
+                                  'assets/images/eaveicon.png',
+                                  height: 38,
+                                  width: 38,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Icon(Icons.blur_on, color: Colors.white),
                                 ),
                               ),
                             ),
-                            if (_user != null) ...[
-                              const SizedBox(height: 8),
-                              SizedBox(
-                                height: 40,
-                                child: _buildTopicFollowChips(),
-                              ),
-                            ],
-                            const SizedBox(height: 8),
-                          ],
-                        ),
-                      )
-                    : null,
-                backgroundColor: const Color(0xFF0D0D0D),
-                pinned: true,
-                floating: true,
-                snap: true,
-              ),
-            ];
-          },
-          body: StreamBuilder<UserModel>(
-            stream: _user != null ? _db.streamUser(_user!.uid) : null,
-            builder: (context, userSnap) {
-              final userModel = userSnap.data;
-              return CustomScrollView(
+                          ),
+                    title: _isMenuOpen
+                        ? null
+                        : Text(
+                            "Eavesdrop",
+                            style: textTheme.headlineMedium!.copyWith(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                              color: Colors.white,
+                            ),
+                          ),
+                    actions: [
+                      IconButton(
+                        icon: Icon(
+                            _isMenuOpen ? Icons.close : Icons.menu_rounded),
+                        onPressed: () {
+                          setState(() {
+                            _isMenuOpen = !_isMenuOpen;
+                          });
+                        },
+                      ),
+                    ],
+                    bottom: _isMenuOpen
+                        ? PreferredSize(
+                            preferredSize: Size.fromHeight(
+                              _user != null ? 250.0 : 206.0,
+                            ),
+                            child: Column(
+                              children: [
+                                SizedBox(
+                                  height: 48.0,
+                                  child: _buildMenuButtons(_user, userModel),
+                                ),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                    height: 44, child: _buildFilterChips()),
+                                const SizedBox(height: 8),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  child: TextField(
+                                    controller: _searchController,
+                                    onChanged: (value) =>
+                                        setState(() => _searchQuery = value),
+                                    decoration: InputDecoration(
+                                      hintText:
+                                          'Search topic, mood, host, date…',
+                                      prefixIcon: const Icon(Icons.search),
+                                      suffixIcon: _searchQuery.isNotEmpty
+                                          ? IconButton(
+                                              onPressed: () {
+                                                _searchController.clear();
+                                                setState(
+                                                    () => _searchQuery = '');
+                                              },
+                                              icon: const Icon(Icons.close),
+                                            )
+                                          : null,
+                                      filled: true,
+                                      fillColor: const Color(0xFF1A1A1A),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide.none,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                if (_user != null) ...[
+                                  const SizedBox(height: 8),
+                                  SizedBox(
+                                    height: 40,
+                                    child: _buildTopicFollowChips(userModel),
+                                  ),
+                                ],
+                                const SizedBox(height: 8),
+                              ],
+                            ),
+                          )
+                        : null,
+                    backgroundColor: const Color(0xFF0D0D0D),
+                    pinned: true,
+                    floating: true,
+                    snap: true,
+                  ),
+                ];
+              },
+              body: CustomScrollView(
                 slivers: <Widget>[
                   if (userModel != null && !userModel.isPremium)
                     SliverToBoxAdapter(
@@ -235,7 +261,8 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
                           onTap: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const CreditsScreen()),
+                              MaterialPageRoute(
+                                  builder: (context) => const CreditsScreen()),
                             );
                           },
                           child: Container(
@@ -250,11 +277,13 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.star, color: Colors.black, size: 30),
+                                const Icon(Icons.star,
+                                    color: Colors.black, size: 30),
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         "Upgrade to Premium",
@@ -274,7 +303,8 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
                                     ],
                                   ),
                                 ),
-                                const Icon(Icons.arrow_forward_ios, color: Colors.black, size: 16),
+                                const Icon(Icons.arrow_forward_ios,
+                                    color: Colors.black, size: 16),
                               ],
                             ),
                           ),
@@ -325,9 +355,9 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
                     emptyMessage: 'No featured past calls available.',
                   ),
                 ],
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -459,38 +489,28 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
     );
   }
 
-  Widget _buildMenuButtons(User? user) {
+  Widget _buildMenuButtons(User? user, UserModel? userModel) {
     return ListView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       children: [
-        if (user != null)
-          StreamBuilder<UserModel>(
-            stream: _db.streamUser(user.uid),
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                final userModel = snapshot.data!;
-                if (userModel.isAdmin || userModel.isSuperAdmin) {
-                  return TextButton.icon(
-                    icon: const Icon(Icons.dashboard, color: Colors.white),
-                    label: const Text(
-                      'Admin',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AdminDashboard(),
-                        ),
-                      );
-                    },
-                  );
-                }
-              }
-              return const SizedBox.shrink();
-            },
-          ),
+        if (user != null && userModel != null)
+          if (userModel.isAdmin || userModel.isSuperAdmin)
+            TextButton.icon(
+              icon: const Icon(Icons.dashboard, color: Colors.white),
+              label: const Text(
+                'Admin',
+                style: TextStyle(color: Colors.white),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AdminDashboard(),
+                  ),
+                );
+              },
+            ),
         TextButton.icon(
           icon: const Icon(Icons.monetization_on, color: Colors.white),
           label: const Text('Credits', style: TextStyle(color: Colors.white)),
@@ -559,36 +579,31 @@ class _LiveHomeScreenState extends State<LiveHomeScreen> {
   }
 
 
-  Widget _buildTopicFollowChips() {
-    if (_user == null) return const SizedBox.shrink();
-    return StreamBuilder<UserModel>(
-      stream: _db.streamUser(_user!.uid),
-      builder: (context, snapshot) {
-        final followed = (snapshot.data?.followedTopics ?? const <String>[])
-            .map((e) => e.toLowerCase())
-            .toSet();
-        return ListView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          children: _recommendedTopics.map((topic) {
-            final isSelected = followed.contains(topic.toLowerCase());
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: FilterChip(
-                label: Text(topic),
-                selected: isSelected,
-                onSelected: (selected) async {
-                  if (selected) {
-                    await _db.followTopic(_user!.uid, topic);
-                  } else {
-                    await _db.unfollowTopic(_user!.uid, topic);
-                  }
-                },
-              ),
-            );
-          }).toList(),
+  Widget _buildTopicFollowChips(UserModel? userModel) {
+    if (_user == null || userModel == null) return const SizedBox.shrink();
+    final followed = userModel.followedTopics
+        .map((e) => e.toLowerCase())
+        .toSet();
+    return ListView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      children: _recommendedTopics.map((topic) {
+        final isSelected = followed.contains(topic.toLowerCase());
+        return Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: FilterChip(
+            label: Text(topic),
+            selected: isSelected,
+            onSelected: (selected) async {
+              if (selected) {
+                await _db.followTopic(_user!.uid, topic);
+              } else {
+                await _db.unfollowTopic(_user!.uid, topic);
+              }
+            },
+          ),
         );
-      },
+      }).toList(),
     );
   }
 

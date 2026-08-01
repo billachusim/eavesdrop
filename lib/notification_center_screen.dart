@@ -18,10 +18,22 @@ class NotificationCenterScreen extends StatelessWidget {
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: DatabaseService().streamNotifications(user.uid),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Text(
+                  'Error loading notifications: ${snapshot.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.redAccent),
+                ),
+              ),
+            );
+          }
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          final items = snapshot.data!;
+          final items = snapshot.data ?? [];
           if (items.isEmpty) {
             return const Center(child: Text('No notifications yet.'));
           }

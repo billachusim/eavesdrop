@@ -1,4 +1,5 @@
 import 'package:eavesdrop/services/database_service.dart';
+import 'package:eavesdrop/services/share_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +13,7 @@ class SettingsPage extends StatefulWidget {
   const SettingsPage({Key? key}) : super(key: key);
 
   @override
-  _SettingsPageState createState() => _SettingsPageState();
+  State<SettingsPage> createState() => _SettingsPageState();
 }
 
 class _SettingsPageState extends State<SettingsPage> {
@@ -89,6 +90,18 @@ class _SettingsPageState extends State<SettingsPage> {
                 MaterialPageRoute(
                   builder: (context) => const NotificationCenterScreen(),
                 ),
+              );
+            },
+          ),
+          TextButton.icon(
+            icon: const Icon(Icons.share, color: Colors.white),
+            label: const Text('Share App', style: TextStyle(color: Colors.white)),
+            onPressed: () {
+              final box = context.findRenderObject() as RenderBox?;
+              ShareService.shareApp(
+                sharePositionOrigin: box != null
+                    ? box.localToGlobal(Offset.zero) & box.size
+                    : null,
               );
             },
           ),

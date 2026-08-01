@@ -3,6 +3,8 @@ import 'package:eavesdrop/auth/onboarding_screen.dart';
 import 'package:eavesdrop/models/booking_model.dart';
 import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/models/user_model.dart';
+import 'package:eavesdrop/services/engagement_service.dart';
+import 'package:eavesdrop/services/notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -56,6 +58,7 @@ class DatabaseService {
           'credits': FieldValue.increment(-cost),
         });
       });
+      EngagementService().recordBooking();
     } catch (e) {
       // It's better to re-throw the error to be handled by the UI
       // print(e.toString());
@@ -85,6 +88,10 @@ class DatabaseService {
           'credits': FieldValue.increment(-cost),
         });
       });
+
+      // Schedule local notification
+      NotificationService().scheduleCallReminder(call);
+      EngagementService().recordBooking();
     } catch (e) {
       // Re-throw the error to be handled by the UI
       rethrow;
@@ -348,11 +355,11 @@ class DatabaseService {
 
 
   // Set a reminder for a call
-  Future<void> setReminder(String callId, String userId) async {
+  Future<void> setReminder(CallModel call, String userId) async {
     try {
       await _db
           .collection('calls')
-          .doc(callId)
+          .doc(call.id)
           .collection('reminders')
           .doc(userId)
           .set({});
@@ -362,6 +369,8 @@ class DatabaseService {
         body: 'You will be notified when this call starts.',
         type: 'reminder',
       );
+      // Schedule local notification
+      await NotificationService().scheduleCallReminder(call);
     } catch (e) {
       // print(e.toString());
     }
@@ -377,6 +386,8 @@ class DatabaseService {
           .collection('reminders')
           .doc(userId)
           .delete();
+      // Cancel local notification
+      await NotificationService().cancelCallReminder(callId);
     } catch (e) {
       // print(e.toString());
     }

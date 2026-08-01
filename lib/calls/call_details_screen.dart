@@ -9,11 +9,14 @@ import 'package:eavesdrop/models/call_model.dart';
 import 'package:eavesdrop/models/user_model.dart';
 import 'package:eavesdrop/services/ai_summary_service.dart';
 import 'package:eavesdrop/services/database_service.dart';
+import 'package:eavesdrop/services/engagement_service.dart';
+import 'package:eavesdrop/services/share_service.dart';
+import 'package:eavesdrop/widgets/call_share_card.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:screenshot/screenshot.dart';
 
 class CallDetailsScreen extends StatefulWidget {
   final CallModel call;
@@ -33,6 +36,7 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
   final DatabaseService _db = DatabaseService();
   final AiSummaryService _summaryService = AiSummaryService();
   final AudioPlayer _audioPlayer = AudioPlayer();
+  final ScreenshotController _screenshotController = ScreenshotController();
   static const int _unlockCost = 20;
   static const Duration _freePreview = Duration(minutes: 1);
 
@@ -487,14 +491,21 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
                   ),
                 OutlinedButton.icon(
                   onPressed: () async {
-                    await Clipboard.setData(
-                      ClipboardData(text: 'https://eavesdrop.app/call/${widget.call.id}'),
+                    final box = context.findRenderObject() as RenderBox?;
+                    final imageBytes = await _screenshotController.captureFromWidget(
+                      CallShareCard(call: widget.call),
+                      delay: const Duration(milliseconds: 50),
+                      targetSize: const Size(1080, 1080),
                     );
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Share link copied.')),
-                      );
-                    }
+                    await ShareService.shareCallWithImage(
+                      title: widget.call.title,
+                      hostName: widget.call.userNickname,
+                      imageBytes: imageBytes,
+                      callId: widget.call.id,
+                      sharePositionOrigin: box != null
+                          ? box.localToGlobal(Offset.zero) & box.size
+                          : null,
+                    );
                   },
                   icon: const Icon(Icons.share_outlined),
                   label: const Text('Share'),
@@ -503,11 +514,10 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
                   OutlinedButton.icon(
                     onPressed: () async {
                       await _db.favoriteCall(currentUser.uid, widget.call);
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Saved to favorites.')),
-                        );
-                      }
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Saved to favorites.')),
+                      );
                     },
                     icon: const Icon(Icons.bookmark_add_outlined),
                     label: const Text('Save'),
@@ -627,6 +637,7 @@ class _CallDetailsScreenState extends State<CallDetailsScreen> {
                   await _showAudioUnlockPrompt();
                 } else {
                   await _audioPlayer.play(UrlSource(widget.call.recordingUrl!));
+                  EngagementService().recordListen();
                 }
               }
             },

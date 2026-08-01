@@ -115,40 +115,35 @@ class _CallCardState extends State<CallCard>
         widget.call.startTime.toDate().isAfter(DateTime.now());
     final bool isPast = !widget.call.isLive && !isUpcoming;
 
-    return StreamBuilder<UserModel>(
-        stream: user != null ? db.streamUser(widget.call.callerId) : null,
-        builder: (context, userSnapshot) {
-          return GestureDetector(
-            onTap: widget.onTap,
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1A1A),
-                borderRadius: BorderRadius.circular(22),
-                image: (userSnapshot.hasData &&
-                    userSnapshot.data!.photoURL != null)
-                    ? DecorationImage(
-                    image: CachedNetworkImageProvider(
-                        userSnapshot.data!.photoURL!),
-                    fit: BoxFit.cover,
-                    colorFilter: ColorFilter.mode(
-                        Colors.black.withAlpha(150), BlendMode.darken))
-                    : null,
-                border: Border.all(
-                  color: widget.call.isLive
-                      ? Colors.red.withAlpha(128)
-                      : Colors.white.withAlpha(30),
-                  width: 1,
-                ),
-                boxShadow: widget.call.isLive
-                    ? [
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A1A),
+          borderRadius: BorderRadius.circular(22),
+          image: (widget.call.userPhotoURL.isNotEmpty)
+              ? DecorationImage(
+                  image: CachedNetworkImageProvider(widget.call.userPhotoURL),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                      Colors.black.withAlpha(150), BlendMode.darken))
+              : null,
+          border: Border.all(
+            color: widget.call.isLive
+                ? Colors.red.withAlpha(128)
+                : Colors.white.withAlpha(30),
+            width: 1,
+          ),
+          boxShadow: widget.call.isLive
+              ? [
                   BoxShadow(
                     color: Colors.red.withAlpha(51),
                     blurRadius: 25,
                     spreadRadius: 2,
                   )
                 ]
-                    : [
+              : [
                   BoxShadow(
                     color: Colors.black.withAlpha(102),
                     blurRadius: 15,
@@ -156,75 +151,71 @@ class _CallCardState extends State<CallCard>
                     offset: const Offset(0, 8),
                   )
                 ],
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(22),
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.black.withAlpha(200),
-                        Colors.black.withAlpha(100)
-                      ],
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                    )),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildTopRow(
-                        context, user, db, isUpcoming, userSnapshot.data),
-                    const SizedBox(height: 18),
-                    Text(
-                      widget.call.title,
-                      style: GoogleFonts.inter(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        height: 1.3,
-                        shadows: [
-                          const Shadow(blurRadius: 10, color: Colors.black)
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'with ${widget.call.userNickname}',
-                      style: GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white70,
-                      ),
-                    ),
-                    if ((widget.call.userMood ?? '').isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          Chip(
-                            label: Text(widget.call.userMood!),
-                            backgroundColor: Colors.white.withAlpha(25),
-                          ),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: 4),
-                    if (isPast)
-                      Align(
-                          alignment: Alignment.topLeft,
-                          child: _buildPastCallFooter(hasRecording)),
-                    if (isUpcoming) _buildUpcomingCallFooter(context, user, db),
-                    if (widget.call.isLive) _buildLiveCallFooter(),
-                  ],
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              gradient: LinearGradient(
+                colors: [
+                  Colors.black.withAlpha(200),
+                  Colors.black.withAlpha(100)
+                ],
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+              )),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTopRow(context, user, db, isUpcoming),
+              const SizedBox(height: 18),
+              Text(
+                widget.call.title,
+                style: GoogleFonts.inter(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  height: 1.3,
+                  shadows: [const Shadow(blurRadius: 10, color: Colors.black)],
                 ),
               ),
-            ),
-          );
-        });
+              const SizedBox(height: 10),
+              Text(
+                'with ${widget.call.userNickname}',
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white70,
+                ),
+              ),
+              if ((widget.call.userMood ?? '').isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    Chip(
+                      label: Text(widget.call.userMood!),
+                      backgroundColor: Colors.white.withAlpha(25),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 4),
+              if (isPast)
+                Align(
+                    alignment: Alignment.topLeft,
+                    child: _buildPastCallFooter(hasRecording)),
+              if (isUpcoming) _buildUpcomingCallFooter(context, user, db),
+              if (widget.call.isLive) _buildLiveCallFooter(),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildTopRow(BuildContext context, User? currentUser,
-      DatabaseService db, bool isUpcoming, UserModel? callUser) {
+      DatabaseService db, bool isUpcoming) {
     final isCallOwner =
         currentUser != null && widget.call.callerId == currentUser.uid;
 
@@ -237,10 +228,11 @@ class _CallCardState extends State<CallCard>
         else
           _buildPastBadge(),
         const SizedBox(width: 10),
-        if (callUser != null && callUser.photoURL != null)
+        if (widget.call.userPhotoURL.isNotEmpty)
           CircleAvatar(
             radius: 12,
-            backgroundImage: CachedNetworkImageProvider(callUser.photoURL!),
+            backgroundImage:
+                CachedNetworkImageProvider(widget.call.userPhotoURL),
           ),
         const Spacer(),
         if (currentUser != null)
@@ -561,7 +553,7 @@ class _CallCardState extends State<CallCard>
                 }
               } else {
                 // --- Set Reminder ---
-                await db.setReminder(widget.call.id, user.uid);
+                await db.setReminder(widget.call, user.uid);
                 await Add2Calendar.addEvent2Cal(_createCalendarEvent());
                 if (mounted) {
                   setState(() {

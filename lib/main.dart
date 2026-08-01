@@ -1,5 +1,6 @@
 import 'package:eavesdrop/auth/auth_service.dart';
 import 'package:eavesdrop/auth/wrapper.dart';
+import 'package:eavesdrop/services/engagement_service.dart';
 import 'package:eavesdrop/services/notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -31,6 +32,7 @@ void main() async {
     providerApple: kDebugMode ? const AppleDebugProvider() : const AppleAppAttestWithDeviceCheckFallbackProvider(),
   );
   await _notificationService.initialize();
+  await EngagementService().recordAppOpen();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   runApp(const MyApp());
 }
