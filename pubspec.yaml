@@ -3,7 +3,7 @@ description: "Live Conversations Worth Listening To"
 
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 2.1.0+12
+version: 2.2.0+13
 
 environment:
   sdk: '>=3.10.0 <4.0.0'

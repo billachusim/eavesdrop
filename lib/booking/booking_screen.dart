@@ -31,7 +31,7 @@ class _BookingScreenState extends State<BookingScreen> {
     mockBookingService = BookingService(
         serviceName: 'Book One Hour',
         serviceDuration: 60,
-        bookingEnd: DateTime(now.year, now.month, now.day, 23, 59),
+        bookingEnd: DateTime(now.year, now.month, now.day, 23, 59).add(const Duration(days: 90)),
         bookingStart: DateTime(now.year, now.month, now.day, 0, 0));
     _loadHosts();
   }
@@ -100,7 +100,7 @@ class _BookingScreenState extends State<BookingScreen> {
         .toList();
   }
 
-  Future<dynamic> moveToNext({required BookingService newBooking}) async {
+  Future<dynamic> moveToNext({required BookingService newBooking}) {
     final messenger = ScaffoldMessenger.of(context);
     final user = context.read<User?>();
 
@@ -108,25 +108,32 @@ class _BookingScreenState extends State<BookingScreen> {
       messenger.showSnackBar(
         const SnackBar(content: Text('Error: You are not logged in.')),
       );
-      return;
+      return Future.value(null);
     }
 
     if (_selectedHost == null) {
       messenger.showSnackBar(
         const SnackBar(content: Text('Error: Please choose a host first.')),
       );
-      return;
+      return Future.value(null);
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => BookingDetailsScreen(
-          booking: newBooking,
-          selectedHost: _selectedHost!,
+    // By running this in a microtask and returning immediately,
+    // we ensure the button's loading state ends before navigation starts.
+    Future.microtask(() {
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => BookingDetailsScreen(
+            booking: newBooking,
+            selectedHost: _selectedHost!,
+          ),
         ),
-      ),
-    );
+      );
+    });
+
+    return Future.value(null);
   }
 
   @override
@@ -276,46 +283,99 @@ class _BookingScreenState extends State<BookingScreen> {
           SliverFillRemaining(
             child: Container(
               color: const Color(0xFF111111),
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: 18),
               child: Theme(
-                data: Theme.of(context).copyWith(
-                  colorScheme: const ColorScheme.dark(
-                    primary: Colors.deepPurple,
-                    surface: Color(0xFF111111),
+                data: ThemeData.light().copyWith(
+                  primaryColor: Colors.black, // TableCalendar uses this for some header elements
+                  colorScheme: const ColorScheme.light(
+                    primary: Colors.black,
+                    onPrimary: Colors.white,
+                    surface: Colors.white,
+                    onSurface: Colors.black,
                   ),
-                  scaffoldBackgroundColor: const Color(0xFF111111),
-                  cardColor: const Color(0xFF111111),
-                  canvasColor: const Color(0xFF111111),
-                  textTheme: Theme.of(context)
-                      .textTheme
-                      .apply(bodyColor: Colors.white, displayColor: Colors.white),
-                ),
-                child: BookingCalendar(
-                  key: ValueKey(_selectedHost?.uid ?? 'no-host'),
-                  bookingService: mockBookingService,
-                  convertStreamResultToDateTimeRanges: convertStreamResultFirebase,
-                  getBookingStream: getBookingStreamFirebase,
-                  uploadBooking: moveToNext,
-                  pauseSlots: generatePauseSlots(),
-                  pauseSlotText: 'Break',
-                  hideBreakTime: false,
-                  loadingWidget: const Text('Fetching data...'),
-                  uploadingWidget:
-                  const Center(child: CircularProgressIndicator()),
-                  startingDayOfWeek: StartingDayOfWeek.sunday,
-                  bookingButtonColor: Colors.deepPurple,
-                  availableSlotColor: Colors.green,
-                  selectedSlotColor: Colors.blue,
-                  wholeDayIsBookedWidget: const Text(
-                    'Sorry, for this day everything is booked',
-                    style: TextStyle(color: Colors.white),
+                  iconTheme: const IconThemeData(color: Colors.black, size: 28),
+                  textTheme: ThemeData.light().textTheme.copyWith(
+                    titleLarge: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                    titleMedium: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                    bodyLarge: const TextStyle(color: Colors.black),
+                    bodyMedium: const TextStyle(color: Colors.black),
+                  ).apply(
+                    bodyColor: Colors.black,
+                    displayColor: Colors.black,
                   ),
                 ),
-          )
-            )
+                child: Material(
+                  color: Colors.transparent,
+                  child: BookingCalendar(
+                    key: ValueKey(_selectedHost?.uid ?? 'no-host'),
+                    bookingService: mockBookingService,
+                    lastDay: mockBookingService.bookingEnd,
+                    convertStreamResultToDateTimeRanges: convertStreamResultFirebase,
+                    getBookingStream: getBookingStreamFirebase,
+                    uploadBooking: moveToNext,
+                    pauseSlots: generatePauseSlots(),
+                    pauseSlotText: 'Break',
+                    pauseSlotColor: Colors.grey[700],
+                    hideBreakTime: false,
+                    loadingWidget: const Center(
+                        child: Text('Fetching data...',
+                            style: TextStyle(color: Colors.white))),
+                    uploadingWidget:
+                        const Center(child: CircularProgressIndicator()),
+                    startingDayOfWeek: StartingDayOfWeek.sunday,
+                    bookingButtonColor: Colors.deepPurple,
+                    availableSlotColor: Colors.green,
+                    selectedSlotColor: Colors.blue,
+                    availableSlotTextStyle: const TextStyle(color: Colors.white),
+                    selectedSlotTextStyle: const TextStyle(color: Colors.white),
+                    bookedSlotTextStyle: const TextStyle(color: Colors.white),
+                    bookingExplanation: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Wrap(
+                        alignment: WrapAlignment.spaceAround,
+                        spacing: 12.0,
+                        runSpacing: 8.0,
+                        children: [
+                          _buildExplanation(Colors.green, 'Available'),
+                          _buildExplanation(Colors.blue, 'Selected'),
+                          _buildExplanation(Colors.red, 'Booked'),
+                          _buildExplanation(Colors.grey[700]!, 'Break'),
+                        ],
+                      ),
+                    ),
+                    wholeDayIsBookedWidget: const Text(
+                      'Sorry, for this day everything is booked',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           )
         ],
       ),
+    );
+  }
+
+  Widget _buildExplanation(Color color, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          height: 14,
+          width: 14,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
+      ],
     );
   }
 }

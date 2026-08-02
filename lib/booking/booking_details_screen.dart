@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/booking_model.dart';
@@ -38,6 +39,40 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   var uuid = const Uuid();
   bool _isLoading = false;
   final List<String> _moods = kMoodOptions;
+
+  Future<bool> _checkCalendarPermission() async {
+    PermissionStatus status = await Permission.calendarFullAccess.status;
+    if (status.isDenied) {
+      status = await Permission.calendarFullAccess.request();
+    }
+
+    if (status.isPermanentlyDenied || status.isRestricted) {
+      if (!mounted) return false;
+      await showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Calendar Permission Needed'),
+          content: const Text(
+              'Eavesdrop needs calendar access to add your appointments. Please enable it in settings.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                openAppSettings();
+                Navigator.pop(context);
+              },
+              child: const Text('Open Settings'),
+            ),
+          ],
+        ),
+      );
+      return false;
+    }
+    return status.isGranted || status.isLimited;
+  }
 
   @override
   void dispose() {
@@ -192,12 +227,16 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
         cost: cost,
       );
 
-      await Add2Calendar.addEvent2Cal(
-        addToCalendar(
-            userEmail: userEmail,
-            bookingStart: theBookingStart,
-            bookingEnd: theBookingEnd),
-      );
+      // Check for calendar permission before adding to calendar
+      final hasPermission = await _checkCalendarPermission();
+      if (hasPermission) {
+        await Add2Calendar.addEvent2Cal(
+          addToCalendar(
+              userEmail: userEmail,
+              bookingStart: theBookingStart,
+              bookingEnd: theBookingEnd),
+        );
+      }
 
       // Persist the bookingId for future reference if needed
       final prefs = await SharedPreferences.getInstance();

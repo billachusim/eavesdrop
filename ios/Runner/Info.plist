@@ -54,9 +54,9 @@
 		<key>NSMicrophoneUsageDescription</key>
 		<string>This app requires access to the microphone to allow broadcasting audio in live rooms.</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
-		<string>This app requires access to your photo library to save and share call cards.</string>
+		<string>This app requires access to your photo library to save profile images and share call cards.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
-		<string>This app requires access to your photo library to save and share call cards.</string>
+		<string>This app requires access to your photo library to upload profile images and share call cards.</string>
 		<key>ITSAppUsesNonExemptEncryption</key>
 		<false/>
 		<key>LSApplicationQueriesSchemes</key>
