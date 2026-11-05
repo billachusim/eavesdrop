@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:eavesdrop/auth/auth_service.dart';
 import 'package:eavesdrop/auth/wrapper.dart';
 import 'package:eavesdrop/services/engagement_service.dart';
@@ -31,10 +32,24 @@ void main() async {
     providerAndroid: kDebugMode ? const AndroidDebugProvider() : const AndroidPlayIntegrityProvider(),
     providerApple: kDebugMode ? const AppleDebugProvider() : const AppleAppAttestWithDeviceCheckFallbackProvider(),
   );
-  await _notificationService.initialize();
-  await EngagementService().recordAppOpen();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   runApp(const MyApp());
+  // Ask for notification permission and set up reminders after the first
+  // frame, so a permission prompt or a slow call can't block app start.
+  unawaited(_initAfterLaunch());
+}
+
+Future<void> _initAfterLaunch() async {
+  try {
+    await _notificationService.initialize();
+  } catch (e) {
+    debugPrint('Notification init failed: $e');
+  }
+  try {
+    await EngagementService().recordAppOpen();
+  } catch (e) {
+    debugPrint('Engagement init failed: $e');
+  }
 }
 
 class MyApp extends StatelessWidget {
