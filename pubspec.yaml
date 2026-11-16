@@ -3,7 +3,7 @@ description: "Live Conversations Worth Listening To"
 
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 2.2.0+13
+version: 2.2.2+15
 
 environment:
   sdk: '>=3.10.0 <4.0.0'
@@ -18,7 +18,7 @@ dependencies:
   google_fonts: ^8.2.0
   avatar_glow: ^3.0.1
   firebase_core: ^4.12.1
-  cloud_firestore: ^6.7.1
+  cloud_firestore: ^6.10.1
   firebase_storage: ^13.4.5
   firebase_auth: ^6.5.6
   firebase_crashlytics: ^5.2.6
