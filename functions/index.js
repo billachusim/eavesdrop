@@ -183,6 +183,18 @@ exports.scheduledCallHandler = onSchedule("every 1 minutes", async (event) => {
       .where("hasEnded", "==", false)
       .where("startTime", "<=", now);
 
+  // End calls that are still marked live more than an hour after their end
+  // time, so empty rooms don't stay "LIVE" forever when a host never ends them.
+  const graceCutoff = admin.firestore.Timestamp.fromMillis(
+      now.toMillis() - 60 * 60 * 1000);
+  const liveSnapshot = await callsRef.where("isLive", "==", true).get();
+  for (const staleDoc of liveSnapshot.docs) {
+    const endTime = staleDoc.get("endTime");
+    if (!endTime || endTime.toMillis() > graceCutoff.toMillis()) continue;
+    await staleDoc.ref.update({isLive: false, hasEnded: true});
+    console.log(`Auto-ended stale live call ${staleDoc.id}`);
+  }
+
   const snapshot = await query.get();
 
   if (snapshot.empty) {
