@@ -85,8 +85,14 @@ class NotificationService {
 
   Future<void> _initializeLocalNotifications() async {
     tz.initializeTimeZones();
-    final String timeZoneName = (await FlutterTimezone.getLocalTimezone()).identifier;
-    tz.setLocalLocation(tz.getLocation(timeZoneName));
+    try {
+      final String timeZoneName = (await FlutterTimezone.getLocalTimezone()).identifier;
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+    } catch (e) {
+      // Unknown or unsupported time zone name: fall back to UTC so reminders
+      // still work instead of failing notification setup.
+      tz.setLocalLocation(tz.UTC);
+    }
 
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
