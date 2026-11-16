@@ -277,3 +277,17 @@ exports.scheduledCallHandler = onSchedule("every 1 minutes", async (event) => {
 
   return null;
 });
+
+const {onDocumentCreated} = require("firebase-functions/v2/firestore");
+
+// New accounts start with enough credits to book one call (a booking costs
+// 300). Older app builds create users with 100, so top them up here.
+const STARTING_CREDITS = 300;
+exports.topUpStartingCredits = onDocumentCreated("users/{uid}", async (event) => {
+  const snap = event.data;
+  if (!snap) return;
+  const credits = snap.get("credits");
+  if (typeof credits === "number" && credits >= STARTING_CREDITS) return;
+  await snap.ref.update({credits: STARTING_CREDITS, startingCreditsGranted: true});
+  console.log(`Topped up ${event.params.uid} to ${STARTING_CREDITS} credits`);
+});

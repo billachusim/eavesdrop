@@ -34,7 +34,7 @@ class AuthService {
           email: user.email,
           displayName: displayName,
           photoURL: photoURL,
-          credits: 100,
+          credits: 300,
         ));
       }
       return user;
@@ -83,7 +83,7 @@ class AuthService {
           email: user.email,
           displayName: providedDisplayName ?? user.displayName ?? "User ${user.uid.substring(0, 5)}",
           photoURL: user.photoURL ?? Avatars.getRandomAvatar(),
-          credits: 100,
+          credits: 300,
         ));
       }
     }
